@@ -9,7 +9,7 @@
 import unittest
 from unittest.mock import MagicMock
 
-from pipecat.bus.ui_messages import BusUICommandMessage
+from pipecat.bus.ui.messages import BusUICommandMessage
 from pipecat.processors.frameworks.rtvi.models import (
     Click,
     Focus,

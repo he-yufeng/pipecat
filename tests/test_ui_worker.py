@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock
 
 from pipecat.bus.messages import BusJobCancelMessage, BusJobRequestMessage
-from pipecat.bus.ui_messages import _UI_SNAPSHOT_BUS_EVENT_NAME, BusUIEventMessage
+from pipecat.bus.ui.messages import _UI_SNAPSHOT_BUS_EVENT_NAME, BusUIEventMessage
 from pipecat.frames.frames import (
     LLMContextFrame,
     LLMMessagesAppendFrame,

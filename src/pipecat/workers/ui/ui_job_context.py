@@ -16,7 +16,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from pipecat.bus.ui_messages import (
+from pipecat.bus.ui.messages import (
     BusUITaskGroupCompletedMessage,
     BusUITaskGroupStartedMessage,
 )

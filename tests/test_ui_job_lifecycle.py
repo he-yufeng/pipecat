@@ -20,7 +20,7 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock
 
 from pipecat.bus.messages import BusJobResponseMessage, BusJobUpdateMessage
-from pipecat.bus.ui_messages import (
+from pipecat.bus.ui.messages import (
     _UI_CANCEL_TASK_BUS_EVENT_NAME,
     BusUIEventMessage,
     BusUITaskCompletedMessage,

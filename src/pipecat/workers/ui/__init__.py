@@ -17,7 +17,7 @@ into ``PipelineWorker`` and is active whenever RTVI is enabled — there
 is no decorator or bridge to wire up.
 """
 
-from pipecat.bus.ui_messages import (
+from pipecat.bus.ui.messages import (
     BusUICommandMessage,
     BusUIEventMessage,
     BusUITaskCompletedMessage,

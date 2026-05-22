@@ -17,7 +17,7 @@ canonical ``reply`` shape doesn't fit.
 import unittest
 from unittest.mock import AsyncMock, MagicMock
 
-from pipecat.bus.ui_messages import BusUICommandMessage
+from pipecat.bus.ui.messages import BusUICommandMessage
 from pipecat.workers.llm.tool_decorator import _collect_tools
 from pipecat.workers.ui import ReplyToolMixin, UIWorker
 

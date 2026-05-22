@@ -23,7 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pipecat.bus import BusCancelWorkerMessage, BusEndWorkerMessage, WorkerBus
 from pipecat.bus.bridge_processor import _BusEdgeProcessor
 from pipecat.bus.messages import BusMessage
-from pipecat.bus.ui_messages import (
+from pipecat.bus.ui.messages import (
     _UI_CANCEL_TASK_BUS_EVENT_NAME,
     _UI_SNAPSHOT_BUS_EVENT_NAME,
     BusUICommandMessage,

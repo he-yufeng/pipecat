@@ -23,7 +23,7 @@ from pipecat.bus.messages import (
     BusJobUpdateUrgentMessage,
     BusMessage,
 )
-from pipecat.bus.ui_messages import (
+from pipecat.bus.ui.messages import (
     _UI_CANCEL_TASK_BUS_EVENT_NAME,
     _UI_SNAPSHOT_BUS_EVENT_NAME,
     BusUICommandMessage,
