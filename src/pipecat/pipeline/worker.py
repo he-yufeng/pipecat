@@ -398,33 +398,11 @@ class PipelineWorker(BaseWorker):
             async def on_client_ready(rtvi: RTVIProcessor):
                 await rtvi.set_bot_ready()
 
-            # Republish typed RTVI UI messages from the client onto the bus
-            # as a single BusUIEventMessage carrier so UIWorker subscribers
-            # can dispatch them.
+            # Republish inbound client UI messages onto the bus so
+            # UIWorker subscribers can dispatch them.
             @self.rtvi.event_handler("on_ui_message")
             async def on_ui_message(rtvi: RTVIProcessor, message):
-                if isinstance(message, UIEventMessage):
-                    event_name = message.data.event
-                    payload = message.data.payload
-                elif isinstance(message, UISnapshotMessage):
-                    event_name = _UI_SNAPSHOT_BUS_EVENT_NAME
-                    payload = message.data.tree.model_dump(exclude_none=True)
-                elif isinstance(message, UICancelJobGroupMessage):
-                    event_name = _UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME
-                    payload = {
-                        "job_id": message.data.job_id,
-                        "reason": message.data.reason,
-                    }
-                else:
-                    return
-                await self.send_bus_message(
-                    BusUIEventMessage(
-                        source=self.name,
-                        target=None,
-                        event_name=event_name,
-                        payload=payload,
-                    )
-                )
+                await self._republish_ui_message_on_bus(message)
 
         # This is the idle event. When selected frames are pushed from any
         # processor we consider the pipeline is not idle. We use an observer
@@ -814,6 +792,41 @@ class PipelineWorker(BaseWorker):
 
         if frame is not None:
             await self.queue_frame(frame)
+
+    async def _republish_ui_message_on_bus(
+        self, message: UIEventMessage | UISnapshotMessage | UICancelJobGroupMessage
+    ) -> None:
+        """Republish an inbound client UI message onto the bus.
+
+        Translates a typed RTVI UI message from the client
+        (``UIEventMessage``, ``UISnapshotMessage``, or
+        ``UICancelJobGroupMessage``) into a single ``BusUIEventMessage``
+        carrier so ``UIWorker`` subscribers can dispatch it. This is the
+        inbound counterpart of :meth:`on_bus_message`. Unrecognized
+        message types are ignored.
+        """
+        if isinstance(message, UIEventMessage):
+            event_name = message.data.event
+            payload = message.data.payload
+        elif isinstance(message, UISnapshotMessage):
+            event_name = _UI_SNAPSHOT_BUS_EVENT_NAME
+            payload = message.data.tree.model_dump(exclude_none=True)
+        elif isinstance(message, UICancelJobGroupMessage):
+            event_name = _UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME
+            payload = {
+                "job_id": message.data.job_id,
+                "reason": message.data.reason,
+            }
+        else:
+            return
+        await self.send_bus_message(
+            BusUIEventMessage(
+                source=self.name,
+                target=None,
+                event_name=event_name,
+                payload=payload,
+            )
+        )
 
     async def _cancel(self, *, reason: str | None = None):
         """Internal cancellation logic for the pipeline worker.
