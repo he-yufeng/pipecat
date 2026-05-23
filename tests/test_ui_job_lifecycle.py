@@ -8,8 +8,8 @@
 
 Covers:
 - ``UIWorker.on_bus_message`` forwarding of worker job updates/responses
-  for registered user job groups as ``BusUITask*`` carriers.
-- The reserved ``__cancel_task`` client event routing to
+  for registered user job groups as ``BusUIJob*`` carriers.
+- The reserved ``__cancel_job_group`` client event routing to
   ``cancel_job_group``.
 - ``UserJobGroupContext`` publishing ``group_started`` / ``group_completed``
   envelopes and (de)registering the group on the worker.
@@ -21,12 +21,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 from pipecat.bus.messages import BusJobResponseMessage, BusJobUpdateMessage
 from pipecat.bus.ui.messages import (
-    _UI_CANCEL_TASK_BUS_EVENT_NAME,
+    _UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
     BusUIEventMessage,
-    BusUITaskCompletedMessage,
-    BusUITaskGroupCompletedMessage,
-    BusUITaskGroupStartedMessage,
-    BusUITaskUpdateMessage,
+    BusUIJobCompletedMessage,
+    BusUIJobGroupCompletedMessage,
+    BusUIJobGroupStartedMessage,
+    BusUIJobUpdateMessage,
 )
 from pipecat.frames.frames import LLMMessagesAppendFrame
 from pipecat.pipeline.job_context import JobGroup, JobStatus
@@ -71,7 +71,7 @@ class TestUIWorkerForwarding(unittest.IsolatedAsyncioTestCase):
         forwarded = [
             c.args[0]
             for c in worker.send_bus_message.await_args_list
-            if isinstance(c.args[0], BusUITaskUpdateMessage)
+            if isinstance(c.args[0], BusUIJobUpdateMessage)
         ]
         self.assertEqual(forwarded, [])
 
@@ -94,10 +94,10 @@ class TestUIWorkerForwarding(unittest.IsolatedAsyncioTestCase):
         forwarded = [
             c.args[0]
             for c in worker.send_bus_message.await_args_list
-            if isinstance(c.args[0], BusUITaskUpdateMessage)
+            if isinstance(c.args[0], BusUIJobUpdateMessage)
         ]
         self.assertEqual(len(forwarded), 1)
-        self.assertEqual(forwarded[0].task_id, "t1")
+        self.assertEqual(forwarded[0].job_id, "t1")
         self.assertEqual(forwarded[0].agent_name, "worker")
         self.assertEqual(forwarded[0].data, {"kind": "tool_call", "tool": "WebSearch"})
 
@@ -121,10 +121,10 @@ class TestUIWorkerForwarding(unittest.IsolatedAsyncioTestCase):
         forwarded = [
             c.args[0]
             for c in worker.send_bus_message.await_args_list
-            if isinstance(c.args[0], BusUITaskCompletedMessage)
+            if isinstance(c.args[0], BusUIJobCompletedMessage)
         ]
         self.assertEqual(len(forwarded), 1)
-        self.assertEqual(forwarded[0].task_id, "t1")
+        self.assertEqual(forwarded[0].job_id, "t1")
         self.assertEqual(forwarded[0].agent_name, "worker")
         self.assertEqual(forwarded[0].status, "completed")
         self.assertEqual(forwarded[0].response, {"answer": 42})
@@ -150,7 +150,7 @@ class TestUIWorkerForwarding(unittest.IsolatedAsyncioTestCase):
         statuses = [
             c.args[0].status
             for c in worker.send_bus_message.await_args_list
-            if isinstance(c.args[0], BusUITaskCompletedMessage)
+            if isinstance(c.args[0], BusUIJobCompletedMessage)
         ]
         self.assertEqual(statuses, ["cancelled", "error"])
 
@@ -167,8 +167,8 @@ class TestCancelJobEvent(unittest.IsolatedAsyncioTestCase):
             BusUIEventMessage(
                 source="bridge",
                 target=worker.name,
-                event_name=_UI_CANCEL_TASK_BUS_EVENT_NAME,
-                payload={"task_id": "t1", "reason": "user clicked cancel"},
+                event_name=_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
+                payload={"job_id": "t1", "reason": "user clicked cancel"},
             )
         )
 
@@ -185,8 +185,8 @@ class TestCancelJobEvent(unittest.IsolatedAsyncioTestCase):
             BusUIEventMessage(
                 source="bridge",
                 target=worker.name,
-                event_name=_UI_CANCEL_TASK_BUS_EVENT_NAME,
-                payload={"task_id": "t1"},
+                event_name=_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
+                payload={"job_id": "t1"},
             )
         )
 
@@ -204,8 +204,8 @@ class TestCancelJobEvent(unittest.IsolatedAsyncioTestCase):
             BusUIEventMessage(
                 source="bridge",
                 target=worker.name,
-                event_name=_UI_CANCEL_TASK_BUS_EVENT_NAME,
-                payload={"task_id": "t1"},
+                event_name=_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
+                payload={"job_id": "t1"},
             )
         )
 
@@ -219,8 +219,8 @@ class TestCancelJobEvent(unittest.IsolatedAsyncioTestCase):
             BusUIEventMessage(
                 source="bridge",
                 target=worker.name,
-                event_name=_UI_CANCEL_TASK_BUS_EVENT_NAME,
-                payload={"task_id": "nope"},
+                event_name=_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
+                payload={"job_id": "nope"},
             )
         )
 
@@ -234,7 +234,7 @@ class TestCancelJobEvent(unittest.IsolatedAsyncioTestCase):
             BusUIEventMessage(
                 source="bridge",
                 target=worker.name,
-                event_name=_UI_CANCEL_TASK_BUS_EVENT_NAME,
+                event_name=_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
                 payload=None,
             )
         )
@@ -242,8 +242,8 @@ class TestCancelJobEvent(unittest.IsolatedAsyncioTestCase):
             BusUIEventMessage(
                 source="bridge",
                 target=worker.name,
-                event_name=_UI_CANCEL_TASK_BUS_EVENT_NAME,
-                payload={"task_id": 42},
+                event_name=_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
+                payload={"job_id": 42},
             )
         )
 
@@ -301,19 +301,19 @@ class TestUserJobGroupContext(unittest.IsolatedAsyncioTestCase):
         kinds = [type(c.args[0]).__name__ for c in worker.send_bus_message.await_args_list]
         self.assertEqual(
             kinds,
-            ["BusUITaskGroupStartedMessage", "BusUITaskGroupCompletedMessage"],
+            ["BusUIJobGroupStartedMessage", "BusUIJobGroupCompletedMessage"],
         )
 
         started = worker.send_bus_message.await_args_list[0].args[0]
-        self.assertIsInstance(started, BusUITaskGroupStartedMessage)
-        self.assertEqual(started.task_id, "t1")
+        self.assertIsInstance(started, BusUIJobGroupStartedMessage)
+        self.assertEqual(started.job_id, "t1")
         self.assertEqual(started.agents, ["w1"])
         self.assertEqual(started.label, "My research")
         self.assertTrue(started.cancellable)
 
         completed = worker.send_bus_message.await_args_list[1].args[0]
-        self.assertIsInstance(completed, BusUITaskGroupCompletedMessage)
-        self.assertEqual(completed.task_id, "t1")
+        self.assertIsInstance(completed, BusUIJobGroupCompletedMessage)
+        self.assertEqual(completed.job_id, "t1")
 
     async def test_non_cancellable_group_sets_flag_in_started_message(self):
         worker = await _make_solo_worker()
@@ -345,14 +345,14 @@ class TestUserJobGroupContext(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(job_id, "t1")
 
         started = worker.send_bus_message.await_args_list[0].args[0]
-        self.assertIsInstance(started, BusUITaskGroupStartedMessage)
+        self.assertIsInstance(started, BusUIJobGroupStartedMessage)
         self.assertEqual(started.label, "Background work")
 
         # The background runner drains the group and publishes completion.
         for _ in range(50):
             await asyncio.sleep(0)
             if any(
-                isinstance(c.args[0], BusUITaskGroupCompletedMessage)
+                isinstance(c.args[0], BusUIJobGroupCompletedMessage)
                 for c in worker.send_bus_message.await_args_list
             ):
                 break

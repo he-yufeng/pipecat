@@ -9,17 +9,17 @@
 from pipecat.bus.ui.messages import (
     BusUICommandMessage,
     BusUIEventMessage,
-    BusUITaskCompletedMessage,
-    BusUITaskGroupCompletedMessage,
-    BusUITaskGroupStartedMessage,
-    BusUITaskUpdateMessage,
+    BusUIJobCompletedMessage,
+    BusUIJobGroupCompletedMessage,
+    BusUIJobGroupStartedMessage,
+    BusUIJobUpdateMessage,
 )
 
 __all__ = [
     "BusUICommandMessage",
     "BusUIEventMessage",
-    "BusUITaskCompletedMessage",
-    "BusUITaskGroupCompletedMessage",
-    "BusUITaskGroupStartedMessage",
-    "BusUITaskUpdateMessage",
+    "BusUIJobCompletedMessage",
+    "BusUIJobGroupCompletedMessage",
+    "BusUIJobGroupStartedMessage",
+    "BusUIJobUpdateMessage",
 ]

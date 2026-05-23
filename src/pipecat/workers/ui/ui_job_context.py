@@ -17,8 +17,8 @@ import time
 from typing import TYPE_CHECKING
 
 from pipecat.bus.ui.messages import (
-    BusUITaskGroupCompletedMessage,
-    BusUITaskGroupStartedMessage,
+    BusUIJobGroupCompletedMessage,
+    BusUIJobGroupStartedMessage,
 )
 from pipecat.pipeline.job_context import JobGroupContext
 
@@ -31,11 +31,11 @@ class UserJobGroupContext(JobGroupContext):
 
     Behaves exactly like ``JobGroupContext`` for the dispatching code.
     Additionally, on enter the context registers the group with its
-    parent ``UIWorker`` and publishes a ``BusUITaskGroupStartedMessage``.
+    parent ``UIWorker`` and publishes a ``BusUIJobGroupStartedMessage``.
     The worker forwards any subsequent ``BusJobUpdateMessage`` /
     ``BusJobResponseMessage`` whose ``job_id`` matches a registered
-    group as ``BusUITaskUpdateMessage`` / ``BusUITaskCompletedMessage``.
-    On exit the context publishes ``BusUITaskGroupCompletedMessage`` and
+    group as ``BusUIJobUpdateMessage`` / ``BusUIJobCompletedMessage``.
+    On exit the context publishes ``BusUIJobGroupCompletedMessage`` and
     deregisters.
 
     Workers don't need to know about the UI surface: any
@@ -81,9 +81,9 @@ class UserJobGroupContext(JobGroupContext):
                 errors. Defaults to True.
             label: Optional human-readable label surfaced to the
                 client (e.g. ``"Research: Radiohead"``). The client UI
-                uses it to title the in-flight task card.
+                uses it to title the in-flight job-group card.
             cancellable: Whether the client may request cancellation
-                of this group via the reserved ``__cancel_task`` event.
+                of this group via the reserved ``__cancel_job_group`` event.
                 Defaults to True.
         """
         super().__init__(
@@ -118,10 +118,10 @@ class UserJobGroupContext(JobGroupContext):
             cancellable=self._cancellable,
         )
         await self._ui_worker.send_bus_message(
-            BusUITaskGroupStartedMessage(
+            BusUIJobGroupStartedMessage(
                 source=self._ui_worker.name,
                 target=None,
-                task_id=job_id,
+                job_id=job_id,
                 agents=list(self._worker_names),
                 label=self._label,
                 cancellable=self._cancellable,
@@ -138,10 +138,10 @@ class UserJobGroupContext(JobGroupContext):
             if job_id:
                 self._ui_worker._unregister_user_job_group(job_id)
                 await self._ui_worker.send_bus_message(
-                    BusUITaskGroupCompletedMessage(
+                    BusUIJobGroupCompletedMessage(
                         source=self._ui_worker.name,
                         target=None,
-                        task_id=job_id,
+                        job_id=job_id,
                         at=int(time.time() * 1000),
                     )
                 )

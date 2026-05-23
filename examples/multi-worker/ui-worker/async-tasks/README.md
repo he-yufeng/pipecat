@@ -11,13 +11,13 @@ lets the user cancel mid-flight.
   every job lifecycle event to the client. The `reply` tool calls
   `start_user_job_group("wikipedia", "news", "scholar", payload=...,
   label=...)` and the `UIWorker` does the rest.
-- The four **`ui-task` envelopes** the worker forwards (`group_started`,
-  `task_update`, `task_completed`, `group_completed`) and the
-  client-side `RTVIEvent.UITask` event for consuming them. The client
-  keeps a state map keyed by `task_id` and renders per-worker progress.
+- The four **`ui-job-group` envelopes** the worker forwards (`group_started`,
+  `job_update`, `job_completed`, `group_completed`) and the
+  client-side `RTVIEvent.UIJobGroup` event for consuming them. The client
+  keeps a state map keyed by `job_id` and renders per-worker progress.
 - **Cancellation**: the in-flight card's Cancel button calls
-  `client.cancelUITask(task_id, reason)`. The reserved `__cancel_task`
-  event is translated by the `UIWorker` into `cancel_job_group(task_id)`
+  `client.cancelUIJobGroup(job_id, reason)`. The reserved `__cancel_job_group`
+  event is translated by the `UIWorker` into `cancel_job_group(job_id)`
   on the registered group; cancelled workers report status `cancelled`.
 - **Background dispatch from a tool**: `start_user_job_group` returns
   immediately so the `reply` tool can speak its acknowledgement

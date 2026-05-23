@@ -560,8 +560,8 @@ class SystemLogMessage(BaseModel):
 #   ui-event         client-to-server event message
 #   ui-command       server-to-client command message
 #   ui-snapshot      client-to-server accessibility snapshot
-#   ui-cancel-task   client-to-server cancellation request
-#   ui-task          server-to-client task lifecycle envelope
+#   ui-cancel-job-group   client-to-server cancellation request
+#   ui-job-group          server-to-client job-group lifecycle envelope
 #
 # This section is data only (constants and payload models, no
 # behavior). Higher-level frameworks like ``pipecat-ai-subagents``
@@ -572,19 +572,19 @@ class SystemLogMessage(BaseModel):
 # ``@pipecat-ai/client-react``.
 
 # The wire-format ``type`` strings (``"ui-event"``, ``"ui-command"``,
-# ``"ui-snapshot"``, ``"ui-cancel-task"``, ``"ui-task"``) are pinned
+# ``"ui-snapshot"``, ``"ui-cancel-job-group"``, ``"ui-job-group"``) are pinned
 # as ``Literal[...]`` field defaults on the corresponding ``*Message``
 # pydantic class below, matching the convention used for every other
 # RTVI message type in this module.
 
-# Each ``ui-task`` envelope carries a ``kind`` field that the client's
-# task reducer dispatches on. The four kinds form the lifecycle of a
-# user-facing task group:
+# Each ``ui-job-group`` envelope carries a ``kind`` field that the client's
+# reducer dispatches on. The four kinds form the lifecycle of a
+# user-facing job group:
 #
-#   group_started → task_update* → task_completed × N → group_completed
+#   group_started → job_update* → job_completed × N → group_completed
 #
 # where N is the number of workers in the group. The kind strings are
-# pinned as ``Literal[...]`` defaults on the matching ``UITask*Data``
+# pinned as ``Literal[...]`` defaults on the matching ``UIJob*Data``
 # class below.
 
 
@@ -704,24 +704,24 @@ class UISnapshotData(BaseModel):
     tree: A11ySnapshot
 
 
-class UICancelTaskData(BaseModel):
-    """Inner ``data`` for a ``ui-cancel-task`` message.
+class UICancelJobGroupData(BaseModel):
+    """Inner ``data`` for a ``ui-cancel-job-group`` message.
 
     Parameters:
-        task_id: The task group id the client wants cancelled.
+        job_id: The job group id the client wants cancelled.
         reason: Optional human-readable reason.
     """
 
-    task_id: str
+    job_id: str
     reason: str | None = None
 
 
-class UITaskGroupStartedData(BaseModel):
-    """``data`` for a ``ui-task`` envelope with kind ``group_started``.
+class UIJobGroupStartedData(BaseModel):
+    """``data`` for a ``ui-job-group`` envelope with kind ``group_started``.
 
     Parameters:
         kind: Always ``"group_started"``.
-        task_id: Shared task identifier for the group.
+        job_id: Shared job-group identifier for the group.
         agents: Names of the agents the work was dispatched to.
         label: Optional human-readable label for the group.
         cancellable: Whether the client may request cancellation.
@@ -729,69 +729,69 @@ class UITaskGroupStartedData(BaseModel):
     """
 
     kind: Literal["group_started"] = "group_started"
-    task_id: str
+    job_id: str
     agents: list[str] | None = None
     label: str | None = None
     cancellable: bool = True
     at: int = 0
 
 
-class UITaskUpdateData(BaseModel):
-    """``data`` for a ``ui-task`` envelope with kind ``task_update``.
+class UIJobUpdateData(BaseModel):
+    """``data`` for a ``ui-job-group`` envelope with kind ``job_update``.
 
     Parameters:
-        kind: Always ``"task_update"``.
-        task_id: The shared task identifier.
+        kind: Always ``"job_update"``.
+        job_id: The shared job-group identifier.
         agent_name: The worker that produced the update.
         data: The worker's update payload, forwarded verbatim.
         at: Epoch milliseconds when the update was emitted.
     """
 
-    kind: Literal["task_update"] = "task_update"
-    task_id: str
+    kind: Literal["job_update"] = "job_update"
+    job_id: str
     agent_name: str
     data: Any | None = None
     at: int = 0
 
 
-class UITaskCompletedData(BaseModel):
-    """``data`` for a ``ui-task`` envelope with kind ``task_completed``.
+class UIJobCompletedData(BaseModel):
+    """``data`` for a ``ui-job-group`` envelope with kind ``job_completed``.
 
     Parameters:
-        kind: Always ``"task_completed"``.
-        task_id: The shared task identifier.
+        kind: Always ``"job_completed"``.
+        job_id: The shared job-group identifier.
         agent_name: The worker that produced the response.
         status: Completion status string.
         response: The worker's response payload.
         at: Epoch milliseconds when the response was received.
     """
 
-    kind: Literal["task_completed"] = "task_completed"
-    task_id: str
+    kind: Literal["job_completed"] = "job_completed"
+    job_id: str
     agent_name: str
     status: str
     response: Any | None = None
     at: int = 0
 
 
-class UITaskGroupCompletedData(BaseModel):
-    """``data`` for a ``ui-task`` envelope with kind ``group_completed``.
+class UIJobGroupCompletedData(BaseModel):
+    """``data`` for a ``ui-job-group`` envelope with kind ``group_completed``.
 
     Parameters:
         kind: Always ``"group_completed"``.
-        task_id: The shared task identifier.
+        job_id: The shared job-group identifier.
         at: Epoch milliseconds when the group completed.
     """
 
     kind: Literal["group_completed"] = "group_completed"
-    task_id: str
+    job_id: str
     at: int = 0
 
 
-#: Discriminated union over the four task-lifecycle data shapes,
+#: Discriminated union over the four job-group lifecycle data shapes,
 #: keyed by the ``kind`` field.
-UITaskData = (
-    UITaskGroupStartedData | UITaskUpdateData | UITaskCompletedData | UITaskGroupCompletedData
+UIJobGroupData = (
+    UIJobGroupStartedData | UIJobUpdateData | UIJobCompletedData | UIJobGroupCompletedData
 )
 
 
@@ -824,25 +824,25 @@ class UISnapshotMessage(BaseModel):
     data: UISnapshotData
 
 
-class UICancelTaskMessage(BaseModel):
-    """RTVI ``ui-cancel-task`` message (client → server)."""
+class UICancelJobGroupMessage(BaseModel):
+    """RTVI ``ui-cancel-job-group`` message (client → server)."""
 
     label: MessageLiteral = MESSAGE_LABEL
-    type: Literal["ui-cancel-task"] = "ui-cancel-task"
+    type: Literal["ui-cancel-job-group"] = "ui-cancel-job-group"
     id: str
-    data: UICancelTaskData
+    data: UICancelJobGroupData
 
 
-class UITaskMessage(BaseModel):
-    """RTVI ``ui-task`` message (server → client).
+class UIJobGroupMessage(BaseModel):
+    """RTVI ``ui-job-group`` message (server → client).
 
-    The ``data`` field is one of the four task-lifecycle
+    The ``data`` field is one of the four job-group lifecycle
     discriminated by the ``kind`` field.
     """
 
     label: MessageLiteral = MESSAGE_LABEL
-    type: Literal["ui-task"] = "ui-task"
-    data: UITaskData
+    type: Literal["ui-job-group"] = "ui-job-group"
+    data: UIJobGroupData
 
 
 # -- UI command payloads --

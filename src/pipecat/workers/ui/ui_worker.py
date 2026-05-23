@@ -24,12 +24,12 @@ from pipecat.bus.messages import (
     BusMessage,
 )
 from pipecat.bus.ui.messages import (
-    _UI_CANCEL_TASK_BUS_EVENT_NAME,
+    _UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
     _UI_SNAPSHOT_BUS_EVENT_NAME,
     BusUICommandMessage,
     BusUIEventMessage,
-    BusUITaskCompletedMessage,
-    BusUITaskUpdateMessage,
+    BusUIJobCompletedMessage,
+    BusUIJobUpdateMessage,
 )
 from pipecat.frames.frames import LLMContextFrame, LLMMessagesAppendFrame, LLMMessagesUpdateFrame
 from pipecat.pipeline.job_context import JobGroupError, JobStatus
@@ -58,12 +58,12 @@ class _UserJobGroupRegistration:
     """Per-group metadata a UIWorker keeps for each in-flight user job group.
 
     Consulted by ``on_bus_message`` to decide which bus job messages to forward
-    to the client and whether a ``__cancel_task`` event should be honored.
+    to the client and whether a ``__cancel_job_group`` event should be honored.
 
     Parameters:
         worker_names: Names of the workers the group was dispatched to.
-        label: Optional human-readable label shown on the client task card.
-        cancellable: Whether the client may cancel the group via ``__cancel_task``.
+        label: Optional human-readable label shown on the client job-group card.
+        cancellable: Whether the client may cancel the group via ``__cancel_job_group``.
     """
 
     worker_names: list[str]
@@ -93,8 +93,8 @@ class UIWorker(LLMContextWorker):
     - Answer as a delegate. The built-in ``respond`` job runs one screen-grounded
       LLM turn and completes when a ``@tool`` calls ``respond_to_job``.
     - Surface long work. ``user_job_group`` / ``start_user_job_group`` fan work
-      out to peer workers and forward progress to the client as cancellable task
-      cards.
+      out to peer workers and forward progress to the client as cancellable
+      job-group cards.
 
     Messages flow over the bus: when RTVI is enabled, ``PipelineWorker``
     publishes each client ``on_ui_message`` onto the bus as a
@@ -228,7 +228,7 @@ class UIWorker(LLMContextWorker):
         # worker (see ``user_job_group``). Keyed by ``job_id``.
         # ``on_bus_message`` consults this to decide which job
         # update / response messages should be forwarded to the
-        # client as ``ui-task`` envelopes.
+        # client as ``ui-job-group`` envelopes.
         self._user_job_groups: dict[str, _UserJobGroupRegistration] = {}
 
         # Auto-inject the current ``<ui_state>`` snapshot into the context just
@@ -397,7 +397,7 @@ class UIWorker(LLMContextWorker):
         # Reserved cancel event: route to ``cancel_job_group`` for the
         # registered user job group. Honored only when the group was
         # registered with ``cancellable=True``.
-        if message.event_name == _UI_CANCEL_TASK_BUS_EVENT_NAME:
+        if message.event_name == _UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME:
             await self._handle_cancel_job_event(message)
             return
 
@@ -522,11 +522,11 @@ class UIWorker(LLMContextWorker):
     ) -> UserJobGroupContext:
         """Dispatch a job group whose lifecycle is forwarded to the client.
 
-        Like ``job_group(...)`` but also emits ``ui-task`` envelopes for the
-        client's task reducer, so the user can see (and optionally cancel) the
+        Like ``job_group(...)`` but also emits ``ui-job-group`` envelopes for the
+        client's reducer, so the user can see (and optionally cancel) the
         work on screen. Workers need no changes: each ``send_job_update`` they
-        emit is forwarded as a ``task_update`` and their final response as
-        ``task_completed``.
+        emit is forwarded as a ``job_update`` and their final response as
+        ``job_completed``.
 
         Args:
             *worker_names: Names of the workers to send the job to.
@@ -539,9 +539,9 @@ class UIWorker(LLMContextWorker):
                 errors. Defaults to True.
             label: Optional human-readable label surfaced to the
                 client. The client UI uses it to title the in-flight
-                task card.
+                job-group card.
             cancellable: Whether the client may request cancellation
-                of this group via the reserved ``__cancel_task``
+                of this group via the reserved ``__cancel_job_group``
                 event. Defaults to True.
 
         Returns:
@@ -604,9 +604,9 @@ class UIWorker(LLMContextWorker):
                 errors. Defaults to True.
             label: Optional human-readable label surfaced to the
                 client. The client UI uses it to title the in-flight
-                task card.
+                job-group card.
             cancellable: Whether the client may request cancellation
-                of this group via the reserved ``__cancel_task``
+                of this group via the reserved ``__cancel_job_group``
                 event. Defaults to True.
 
         Returns:
@@ -723,10 +723,10 @@ class UIWorker(LLMContextWorker):
         if message.job_id not in self._user_job_groups:
             return
         await self.send_bus_message(
-            BusUITaskUpdateMessage(
+            BusUIJobUpdateMessage(
                 source=self.name,
                 target=None,
-                task_id=message.job_id,
+                job_id=message.job_id,
                 agent_name=message.source,
                 data=message.update,
                 at=int(time.time() * 1000),
@@ -743,10 +743,10 @@ class UIWorker(LLMContextWorker):
         if message.job_id not in self._user_job_groups:
             return
         await self.send_bus_message(
-            BusUITaskCompletedMessage(
+            BusUIJobCompletedMessage(
                 source=self.name,
                 target=None,
-                task_id=message.job_id,
+                job_id=message.job_id,
                 agent_name=message.source,
                 status=str(message.status),
                 response=message.response,
@@ -755,7 +755,7 @@ class UIWorker(LLMContextWorker):
         )
 
     async def _handle_cancel_job_event(self, message: BusUIEventMessage) -> None:
-        """Translate a client ``__cancel_task`` event into ``cancel_job_group``.
+        """Translate a client ``__cancel_job_group`` event into ``cancel_job_group``.
 
         Looks up the registered group and calls
         ``cancel_job_group(job_id, reason)``. Ignores the request
@@ -763,23 +763,23 @@ class UIWorker(LLMContextWorker):
         ``cancellable=False``.
         """
         payload = message.payload if isinstance(message.payload, dict) else {}
-        job_id = payload.get("task_id")
+        job_id = payload.get("job_id")
         if not isinstance(job_id, str) or not job_id:
             logger.warning(
-                f"UIWorker '{self.name}': received {_UI_CANCEL_TASK_BUS_EVENT_NAME} "
-                "with no task_id; ignoring"
+                f"UIWorker '{self.name}': received {_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME} "
+                "with no job_id; ignoring"
             )
             return
         registration = self._user_job_groups.get(job_id)
         if registration is None:
             logger.debug(
-                f"UIWorker '{self.name}': {_UI_CANCEL_TASK_BUS_EVENT_NAME} for "
-                f"unknown task_id {job_id}; ignoring"
+                f"UIWorker '{self.name}': {_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME} for "
+                f"unknown job_id {job_id}; ignoring"
             )
             return
         if not registration.cancellable:
             logger.debug(
-                f"UIWorker '{self.name}': {_UI_CANCEL_TASK_BUS_EVENT_NAME} for "
+                f"UIWorker '{self.name}': {_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME} for "
                 f"non-cancellable group {job_id}; ignoring"
             )
             return

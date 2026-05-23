@@ -3,22 +3,22 @@
  *
  * Same base wiring as the other examples (PipecatClient +
  * managed snapshot streaming + bot audio sink), with one new piece:
- * ``RTVIEvent.UITask`` subscription to consume the task lifecycle
+ * ``RTVIEvent.UIJobGroup`` subscription to consume the job lifecycle
  * envelopes.
  *
  * The server's ``user_task_group`` fans work out to multiple
  * worker agents and forwards their progress automatically as
- * ``ui-task`` envelopes. Four kinds:
+ * ``ui-job-group`` envelopes. Four kinds:
  *
  * - ``group_started``: workers and label are now known.
- * - ``task_update``: a worker emitted a progress update.
- * - ``task_completed``: a worker finished (status + final response).
+ * - ``job_update``: a worker emitted a progress update.
+ * - ``job_completed``: a worker finished (status + final response).
  * - ``group_completed``: every worker has responded.
  *
- * The client maintains a state map keyed by ``task_id``, renders
+ * The client maintains a state map keyed by ``job_id``, renders
  * each group as a card with its workers' statuses, and surfaces a
- * cancel button per cancellable group. ``client.cancelUITask(task_id,
- * reason)`` sends a ``__cancel_task`` event back to the server,
+ * cancel button per cancellable group. ``client.cancelUIJobGroup(job_id,
+ * reason)`` sends a ``__cancel_job_group`` event back to the server,
  * which calls ``UIAgent.cancel_task(...)`` on the registered group.
  */
 
@@ -36,9 +36,9 @@ const resultsList = document.getElementById("results-list");
 const resultsEmpty = document.getElementById("results-empty");
 
 let client;
-let unsubscribeTasks;
+let unsubscribeJobGroups;
 
-// Map<task_id, { label, cancellable, agents, workers: Map<agent_name, {status, lastUpdate, response}>, cardEl }>
+// Map<job_id, { label, cancellable, agents, workers: Map<agent_name, {status, lastUpdate, response}>, cardEl }>
 const groups = new Map();
 
 function setStatus(text, autoHideMs = 0) {
@@ -59,13 +59,13 @@ function refreshEmptyStates() {
 function renderGroupCard(group) {
   const card = document.createElement("div");
   card.className = "task-group";
-  card.dataset.taskId = group.task_id;
+  card.dataset.jobId = group.job_id;
 
   const header = document.createElement("div");
   header.className = "task-group-header";
   const label = document.createElement("div");
   label.className = "task-group-label";
-  label.textContent = group.label ?? `Task group ${group.task_id.slice(0, 8)}`;
+  label.textContent = group.label ?? `Job group ${group.job_id.slice(0, 8)}`;
   header.appendChild(label);
 
   if (group.cancellable) {
@@ -76,7 +76,7 @@ function renderGroupCard(group) {
     cancel.addEventListener("click", () => {
       cancel.disabled = true;
       cancel.textContent = "Cancelling…";
-      client?.cancelUITask(group.task_id, "user requested");
+      client?.cancelUIJobGroup(group.job_id, "user requested");
     });
     group.cancelButton = cancel;
     header.appendChild(cancel);
@@ -172,7 +172,7 @@ function renderResultsForGroup(group) {
   return card;
 }
 
-function handleTaskEnvelope(env) {
+function handleJobGroupEnvelope(env) {
   switch (env.kind) {
     case "group_started": {
       const workers = new Map();
@@ -180,19 +180,19 @@ function handleTaskEnvelope(env) {
         workers.set(a, { status: "running", update: null, response: null });
       }
       const group = {
-        task_id: env.task_id,
+        job_id: env.job_id,
         label: env.label,
         cancellable: env.cancellable,
         agents: env.agents,
         workers,
       };
-      groups.set(env.task_id, group);
+      groups.set(env.job_id, group);
       tasksList.appendChild(renderGroupCard(group));
       refreshEmptyStates();
       break;
     }
-    case "task_update": {
-      const group = groups.get(env.task_id);
+    case "job_update": {
+      const group = groups.get(env.job_id);
       if (!group) break;
       const text = env.data?.text ?? JSON.stringify(env.data);
       const w = group.workers.get(env.agent_name);
@@ -200,8 +200,8 @@ function handleTaskEnvelope(env) {
       updateWorkerRow(group, env.agent_name, { update: text });
       break;
     }
-    case "task_completed": {
-      const group = groups.get(env.task_id);
+    case "job_completed": {
+      const group = groups.get(env.job_id);
       if (!group) break;
       const w = group.workers.get(env.agent_name);
       if (w) {
@@ -219,13 +219,13 @@ function handleTaskEnvelope(env) {
       break;
     }
     case "group_completed": {
-      const group = groups.get(env.task_id);
+      const group = groups.get(env.job_id);
       if (!group) break;
       // Lift the in-flight card into the results panel, then drop
       // the in-flight card.
       resultsList.prepend(renderResultsForGroup(group));
       group.cardEl.remove();
-      groups.delete(env.task_id);
+      groups.delete(env.job_id);
       refreshEmptyStates();
       break;
     }
@@ -257,8 +257,8 @@ async function connect() {
     botAudio.srcObject = new MediaStream([track]);
   });
 
-  client.on(RTVIEvent.UITask, handleTaskEnvelope);
-  unsubscribeTasks = () => client.off(RTVIEvent.UITask, handleTaskEnvelope);
+  client.on(RTVIEvent.UIJobGroup, handleJobGroupEnvelope);
+  unsubscribeJobGroups = () => client.off(RTVIEvent.UIJobGroup, handleJobGroupEnvelope);
 
   try {
     await client.connect({ webrtcUrl: BOT_URL });
@@ -290,9 +290,9 @@ async function disconnect() {
 
 function teardownUI() {
   client?.stopUISnapshotStream();
-  unsubscribeTasks?.();
+  unsubscribeJobGroups?.();
   if (botAudio.srcObject) botAudio.srcObject = null;
-  unsubscribeTasks = undefined;
+  unsubscribeJobGroups = undefined;
   client = undefined;
 }
 

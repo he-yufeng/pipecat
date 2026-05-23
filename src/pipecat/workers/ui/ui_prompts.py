@@ -32,7 +32,7 @@ Your developer context includes two kinds of SDK-managed messages:
 triggered on the client (click, tab switch, navigation, etc.). The \
 payload is JSON for that event.
 - ``<ui_state>...</ui_state>``: an accessibility snapshot of the \
-current screen, injected at the start of every task request. \
+current screen, injected at the start of every request. \
 Indented tree in Playwright-MCP style. Each line is \
 ``- role "name" [state] [ref=eN]`` with children nested one level \
 deeper.

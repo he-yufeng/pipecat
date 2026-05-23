@@ -9,7 +9,7 @@
 Inbound: typed RTVI UI messages from the client (fired via the RTVI
 processor's ``on_ui_message`` event) are republished onto the bus as a
 broadcast ``BusUIEventMessage``. Outbound: ``BusUICommandMessage`` and
-the four ``BusUITask*`` lifecycle carriers are translated into the
+the four ``BusUIJob*`` lifecycle carriers are translated into the
 matching RTVI frames and queued downstream. The bridge is active only
 when RTVI is enabled.
 """
@@ -18,25 +18,25 @@ import asyncio
 import unittest
 
 from pipecat.bus.ui.messages import (
-    _UI_CANCEL_TASK_BUS_EVENT_NAME,
+    _UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
     _UI_SNAPSHOT_BUS_EVENT_NAME,
     BusUICommandMessage,
     BusUIEventMessage,
-    BusUITaskCompletedMessage,
-    BusUITaskGroupCompletedMessage,
-    BusUITaskGroupStartedMessage,
-    BusUITaskUpdateMessage,
+    BusUIJobCompletedMessage,
+    BusUIJobGroupCompletedMessage,
+    BusUIJobGroupStartedMessage,
+    BusUIJobUpdateMessage,
 )
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineWorker
 from pipecat.processors.filters.identity_filter import IdentityFilter
 from pipecat.processors.frame_processor import FrameDirection
-from pipecat.processors.frameworks.rtvi.frames import RTVIUICommandFrame, RTVIUITaskFrame
+from pipecat.processors.frameworks.rtvi.frames import RTVIUICommandFrame, RTVIUIJobGroupFrame
 from pipecat.processors.frameworks.rtvi.models import (
     A11yNode,
     A11ySnapshot,
-    UICancelTaskData,
-    UICancelTaskMessage,
+    UICancelJobGroupData,
+    UICancelJobGroupMessage,
     UIEventData,
     UIEventMessage,
     UISnapshotData,
@@ -105,12 +105,12 @@ class TestUIBridgeInbound(unittest.IsolatedAsyncioTestCase):
 
         await _fire_ui_message(
             worker,
-            UICancelTaskMessage(id="m3", data=UICancelTaskData(task_id="t-1", reason="user")),
+            UICancelJobGroupMessage(id="m3", data=UICancelJobGroupData(job_id="t-1", reason="user")),
         )
 
         events = [m for m in sent if isinstance(m, BusUIEventMessage)]
-        self.assertEqual(events[0].event_name, _UI_CANCEL_TASK_BUS_EVENT_NAME)
-        self.assertEqual(events[0].payload, {"task_id": "t-1", "reason": "user"})
+        self.assertEqual(events[0].event_name, _UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME)
+        self.assertEqual(events[0].payload, {"job_id": "t-1", "reason": "user"})
 
     async def test_missing_payload_becomes_none(self):
         worker, sent, _frames = _make_root()
@@ -146,10 +146,10 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
         worker, _sent, frames = _make_root()
 
         await worker.on_bus_message(
-            BusUITaskGroupStartedMessage(
+            BusUIJobGroupStartedMessage(
                 source="ui",
                 target=None,
-                task_id="t1",
+                job_id="t1",
                 agents=["w1", "w2"],
                 label="Doing stuff",
                 cancellable=True,
@@ -157,43 +157,43 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
             )
         )
 
-        frame = next(f for f in frames if isinstance(f, RTVIUITaskFrame))
+        frame = next(f for f in frames if isinstance(f, RTVIUIJobGroupFrame))
         self.assertEqual(frame.data.kind, "group_started")
-        self.assertEqual(frame.data.task_id, "t1")
+        self.assertEqual(frame.data.job_id, "t1")
         self.assertEqual(frame.data.agents, ["w1", "w2"])
         self.assertEqual(frame.data.label, "Doing stuff")
         self.assertTrue(frame.data.cancellable)
         self.assertEqual(frame.data.at, 1700)
 
-    async def test_task_update_envelope(self):
+    async def test_job_update_envelope(self):
         worker, _sent, frames = _make_root()
 
         await worker.on_bus_message(
-            BusUITaskUpdateMessage(
+            BusUIJobUpdateMessage(
                 source="ui",
                 target=None,
-                task_id="t1",
+                job_id="t1",
                 agent_name="w1",
                 data={"kind": "tool_call", "tool": "WebSearch"},
                 at=1701,
             )
         )
 
-        frame = next(f for f in frames if isinstance(f, RTVIUITaskFrame))
-        self.assertEqual(frame.data.kind, "task_update")
-        self.assertEqual(frame.data.task_id, "t1")
+        frame = next(f for f in frames if isinstance(f, RTVIUIJobGroupFrame))
+        self.assertEqual(frame.data.kind, "job_update")
+        self.assertEqual(frame.data.job_id, "t1")
         self.assertEqual(frame.data.agent_name, "w1")
         self.assertEqual(frame.data.data, {"kind": "tool_call", "tool": "WebSearch"})
         self.assertEqual(frame.data.at, 1701)
 
-    async def test_task_completed_envelope(self):
+    async def test_job_completed_envelope(self):
         worker, _sent, frames = _make_root()
 
         await worker.on_bus_message(
-            BusUITaskCompletedMessage(
+            BusUIJobCompletedMessage(
                 source="ui",
                 target=None,
-                task_id="t1",
+                job_id="t1",
                 agent_name="w1",
                 status="completed",
                 response={"answer": 42},
@@ -201,9 +201,9 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
             )
         )
 
-        frame = next(f for f in frames if isinstance(f, RTVIUITaskFrame))
-        self.assertEqual(frame.data.kind, "task_completed")
-        self.assertEqual(frame.data.task_id, "t1")
+        frame = next(f for f in frames if isinstance(f, RTVIUIJobGroupFrame))
+        self.assertEqual(frame.data.kind, "job_completed")
+        self.assertEqual(frame.data.job_id, "t1")
         self.assertEqual(frame.data.agent_name, "w1")
         self.assertEqual(frame.data.status, "completed")
         self.assertEqual(frame.data.response, {"answer": 42})
@@ -213,25 +213,25 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
         worker, _sent, frames = _make_root()
 
         await worker.on_bus_message(
-            BusUITaskGroupCompletedMessage(source="ui", target=None, task_id="t1", at=1703)
+            BusUIJobGroupCompletedMessage(source="ui", target=None, job_id="t1", at=1703)
         )
 
-        frame = next(f for f in frames if isinstance(f, RTVIUITaskFrame))
+        frame = next(f for f in frames if isinstance(f, RTVIUIJobGroupFrame))
         self.assertEqual(frame.data.kind, "group_completed")
-        self.assertEqual(frame.data.task_id, "t1")
+        self.assertEqual(frame.data.job_id, "t1")
         self.assertEqual(frame.data.at, 1703)
 
     async def test_non_ui_bus_message_queues_no_frame(self):
         worker, _sent, frames = _make_root()
 
         # A plain BusUIEventMessage (inbound carrier) is not an outbound
-        # command/task, so the outbound translation must ignore it.
+        # command/job-group, so the outbound translation must ignore it.
         await worker.on_bus_message(
             BusUIEventMessage(source="x", target=None, event_name="e", payload={})
         )
 
         self.assertEqual(
-            [f for f in frames if isinstance(f, (RTVIUICommandFrame, RTVIUITaskFrame))], []
+            [f for f in frames if isinstance(f, (RTVIUICommandFrame, RTVIUIJobGroupFrame))], []
         )
 
     async def test_worker_without_rtvi_does_not_translate(self):

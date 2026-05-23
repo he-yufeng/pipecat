@@ -10,11 +10,11 @@ The user asks the assistant to research a topic. The UIWorker dispatches
 three peer workers (Wikipedia, news, scholarly papers) in parallel via
 ``start_user_job_group``. Each worker emits progress updates while it
 works. ``UIWorker`` forwards every lifecycle event to the client as
-``ui-task`` envelopes (``group_started``, ``task_update``,
-``task_completed``, ``group_completed``), which the client renders as
+``ui-job-group`` envelopes (``group_started``, ``job_update``,
+``job_completed``, ``group_completed``), which the client renders as
 in-flight cards with per-worker status. The user can cancel a group
-mid-flight via ``client.cancelUITask(task_id)``, which sends a reserved
-``__cancel_task`` event that the worker turns into a ``cancel_job_group``
+mid-flight via ``client.cancelUIJobGroup(job_id)``, which sends a reserved
+``__cancel_job_group`` event that the worker turns into a ``cancel_job_group``
 call.
 
 Architecture::
@@ -230,7 +230,7 @@ class ResearchWorker(UIWorker):
     three peer workers — fire-and-forget from the LLM's perspective, so
     the tool returns immediately with the spoken acknowledgement. The
     ``UIWorker`` forwards every job lifecycle event to the client as
-    ``ui-task`` envelopes, where the client renders progress and a cancel
+    ``ui-job-group`` envelopes, where the client renders progress and a cancel
     button.
     """
 

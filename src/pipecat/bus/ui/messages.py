@@ -10,16 +10,14 @@ These dataclasses are the on-the-bus shape that ``UIWorker`` (see
 ``pipecat.workers.ui``) and the native RTVI⇄bus bridge in
 ``PipelineWorker`` exchange. They are NOT the on-the-wire format the
 client sees; that lives in ``pipecat.processors.frameworks.rtvi.models``
-(``UIEventMessage``, ``UICommandMessage``, ``UITaskMessage``, ...). The
+(``UIEventMessage``, ``UICommandMessage``, ``UIJobGroupMessage``, ...). The
 bridge translates between the two.
 
 - ``BusUIEventMessage`` and ``BusUICommandMessage`` carry client
   events and server commands respectively.
-- ``BusUITaskGroupStartedMessage``, ``BusUITaskUpdateMessage``,
-  ``BusUITaskCompletedMessage``, and ``BusUITaskGroupCompletedMessage``
-  carry the four phases of a user-facing task group's lifecycle. The
-  "task" naming here mirrors the fixed RTVI ``ui-task`` wire protocol;
-  the server-side mechanism that drives them is a job group (see
+- ``BusUIJobGroupStartedMessage``, ``BusUIJobUpdateMessage``,
+  ``BusUIJobCompletedMessage``, and ``BusUIJobGroupCompletedMessage``
+  carry the four phases of a user-facing job group's lifecycle (see
   ``UIWorker.user_job_group``).
 
 The carriers live in the ``bus`` layer (rather than alongside
@@ -42,11 +40,11 @@ from pipecat.bus.messages import BusDataMessage
 _UI_SNAPSHOT_BUS_EVENT_NAME = "__ui_snapshot"
 
 #: Internal ``event_name`` used by the UI bridge when republishing a
-#: ``ui-cancel-task`` wire message onto the bus as a
+#: ``ui-cancel-job-group`` wire message onto the bus as a
 #: ``BusUIEventMessage``. ``UIWorker``'s bus dispatch matches on this
 #: name to route to ``cancel_job_group``. Internal; not part of the
 #: public wire format.
-_UI_CANCEL_TASK_BUS_EVENT_NAME = "__cancel_task"
+_UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME = "__cancel_job_group"
 
 
 @dataclass
@@ -87,27 +85,27 @@ class BusUICommandMessage(BusDataMessage):
 
 
 # ---------------------------------------------------------------------------
-# UI task lifecycle
+# UI job-group lifecycle
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class BusUITaskGroupStartedMessage(BusDataMessage):
-    """A user-facing task group has been dispatched.
+class BusUIJobGroupStartedMessage(BusDataMessage):
+    """A user-facing job group has been dispatched.
 
     Published by ``UIWorker.user_job_group(...)`` on entry. The bridge
-    forwards it to the client as a ``ui-task`` envelope with
+    forwards it to the client as a ``ui-job-group`` envelope with
     ``kind = "group_started"``.
 
     Parameters:
-        task_id: Shared task identifier for the group.
+        job_id: Shared job-group identifier for the group.
         agents: Names of the workers the work was dispatched to.
         label: Optional human-readable label for the group.
         cancellable: Whether the client may request cancellation.
         at: Epoch milliseconds when the group started.
     """
 
-    task_id: str = ""
+    job_id: str = ""
     agents: list[str] | None = None
     label: str | None = None
     cancellable: bool = True
@@ -115,45 +113,45 @@ class BusUITaskGroupStartedMessage(BusDataMessage):
 
 
 @dataclass
-class BusUITaskUpdateMessage(BusDataMessage):
-    """Per-task progress for a user-facing task group.
+class BusUIJobUpdateMessage(BusDataMessage):
+    """Per-worker progress for a user-facing job group.
 
     Forwarded by the ``UIWorker`` whenever a worker emits a
     ``BusJobUpdateMessage`` whose ``job_id`` matches a registered user
-    task group. The bridge forwards to the client as a ``ui-task``
-    envelope with ``kind = "task_update"``.
+    job group. The bridge forwards to the client as a ``ui-job-group``
+    envelope with ``kind = "job_update"``.
 
     Parameters:
-        task_id: The shared task identifier.
+        job_id: The shared job-group identifier.
         agent_name: The worker that produced the update.
         data: The worker's update payload, forwarded verbatim.
         at: Epoch milliseconds when the update was emitted on the bus.
     """
 
-    task_id: str = ""
+    job_id: str = ""
     agent_name: str = ""
     data: Any = None
     at: int = 0
 
 
 @dataclass
-class BusUITaskCompletedMessage(BusDataMessage):
-    """A worker in a user-facing task group has completed.
+class BusUIJobCompletedMessage(BusDataMessage):
+    """A worker in a user-facing job group has completed.
 
     Forwarded by the ``UIWorker`` whenever a worker's
-    ``BusJobResponseMessage`` arrives for a registered user task group.
-    The bridge forwards to the client as a ``ui-task`` envelope with
-    ``kind = "task_completed"``.
+    ``BusJobResponseMessage`` arrives for a registered user job group.
+    The bridge forwards to the client as a ``ui-job-group`` envelope with
+    ``kind = "job_completed"``.
 
     Parameters:
-        task_id: The shared task identifier.
+        job_id: The shared job-group identifier.
         agent_name: The worker that produced the response.
         status: Completion status as a string (``JobStatus`` value).
         response: The worker's response payload.
         at: Epoch milliseconds when the response was received.
     """
 
-    task_id: str = ""
+    job_id: str = ""
     agent_name: str = ""
     status: str = ""
     response: Any = None
@@ -161,18 +159,18 @@ class BusUITaskCompletedMessage(BusDataMessage):
 
 
 @dataclass
-class BusUITaskGroupCompletedMessage(BusDataMessage):
-    """A user-facing task group has completed.
+class BusUIJobGroupCompletedMessage(BusDataMessage):
+    """A user-facing job group has completed.
 
     Published when ``UIWorker.user_job_group(...)`` exits, after every
     worker has responded (or the group has been cancelled). The bridge
-    forwards to the client as a ``ui-task`` envelope with
+    forwards to the client as a ``ui-job-group`` envelope with
     ``kind = "group_completed"``.
 
     Parameters:
-        task_id: The shared task identifier.
+        job_id: The shared job-group identifier.
         at: Epoch milliseconds when the group completed.
     """
 
-    task_id: str = ""
+    job_id: str = ""
     at: int = 0

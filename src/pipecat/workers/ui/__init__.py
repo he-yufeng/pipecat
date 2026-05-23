@@ -20,10 +20,10 @@ is no decorator or bridge to wire up.
 from pipecat.bus.ui.messages import (
     BusUICommandMessage,
     BusUIEventMessage,
-    BusUITaskCompletedMessage,
-    BusUITaskGroupCompletedMessage,
-    BusUITaskGroupStartedMessage,
-    BusUITaskUpdateMessage,
+    BusUIJobCompletedMessage,
+    BusUIJobGroupCompletedMessage,
+    BusUIJobGroupStartedMessage,
+    BusUIJobUpdateMessage,
 )
 from pipecat.workers.ui.ui_event_decorator import on_ui_event
 from pipecat.workers.ui.ui_prompts import UI_STATE_PROMPT_GUIDE
@@ -38,10 +38,10 @@ from pipecat.workers.ui.ui_worker import UIWorker
 __all__ = [
     "BusUICommandMessage",
     "BusUIEventMessage",
-    "BusUITaskCompletedMessage",
-    "BusUITaskGroupCompletedMessage",
-    "BusUITaskGroupStartedMessage",
-    "BusUITaskUpdateMessage",
+    "BusUIJobCompletedMessage",
+    "BusUIJobGroupCompletedMessage",
+    "BusUIJobGroupStartedMessage",
+    "BusUIJobUpdateMessage",
     "ReplyToolMixin",
     "UIWorker",
     "UI_STATE_PROMPT_GUIDE",

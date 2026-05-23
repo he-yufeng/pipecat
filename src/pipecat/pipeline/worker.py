@@ -24,14 +24,14 @@ from pipecat.bus import BusCancelWorkerMessage, BusEndWorkerMessage, WorkerBus
 from pipecat.bus.bridge_processor import _BusEdgeProcessor
 from pipecat.bus.messages import BusMessage
 from pipecat.bus.ui.messages import (
-    _UI_CANCEL_TASK_BUS_EVENT_NAME,
+    _UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME,
     _UI_SNAPSHOT_BUS_EVENT_NAME,
     BusUICommandMessage,
     BusUIEventMessage,
-    BusUITaskCompletedMessage,
-    BusUITaskGroupCompletedMessage,
-    BusUITaskGroupStartedMessage,
-    BusUITaskUpdateMessage,
+    BusUIJobCompletedMessage,
+    BusUIJobGroupCompletedMessage,
+    BusUIJobGroupStartedMessage,
+    BusUIJobUpdateMessage,
 )
 from pipecat.clocks.base_clock import BaseClock
 from pipecat.clocks.system_clock import SystemClock
@@ -63,15 +63,15 @@ from pipecat.pipeline.utils import run_setup_hook
 from pipecat.pipeline.worker_observer import WorkerObserver
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor, FrameProcessorSetup
 from pipecat.processors.frameworks.rtvi import RTVIObserver, RTVIObserverParams, RTVIProcessor
-from pipecat.processors.frameworks.rtvi.frames import RTVIUICommandFrame, RTVIUITaskFrame
+from pipecat.processors.frameworks.rtvi.frames import RTVIUICommandFrame, RTVIUIJobGroupFrame
 from pipecat.processors.frameworks.rtvi.models import (
-    UICancelTaskMessage,
+    UICancelJobGroupMessage,
     UIEventMessage,
+    UIJobCompletedData,
+    UIJobGroupCompletedData,
+    UIJobGroupStartedData,
+    UIJobUpdateData,
     UISnapshotMessage,
-    UITaskCompletedData,
-    UITaskGroupCompletedData,
-    UITaskGroupStartedData,
-    UITaskUpdateData,
 )
 from pipecat.utils.asyncio.task_manager import BaseTaskManager, TaskManager, TaskManagerParams
 from pipecat.utils.tracing.setup import is_tracing_available
@@ -409,10 +409,10 @@ class PipelineWorker(BaseWorker):
                 elif isinstance(message, UISnapshotMessage):
                     event_name = _UI_SNAPSHOT_BUS_EVENT_NAME
                     payload = message.data.tree.model_dump(exclude_none=True)
-                elif isinstance(message, UICancelTaskMessage):
-                    event_name = _UI_CANCEL_TASK_BUS_EVENT_NAME
+                elif isinstance(message, UICancelJobGroupMessage):
+                    event_name = _UI_CANCEL_JOB_GROUP_BUS_EVENT_NAME
                     payload = {
-                        "task_id": message.data.task_id,
+                        "job_id": message.data.job_id,
                         "reason": message.data.reason,
                     }
                 else:
@@ -758,9 +758,9 @@ class PipelineWorker(BaseWorker):
 
         Runs the base lifecycle/job dispatch first, then translates RTVI
         UI bus messages produced by a ``UIWorker`` (``BusUICommandMessage``
-        and the four ``BusUITask*`` lifecycle carriers) into the matching
+        and the four ``BusUIJob*`` lifecycle carriers) into the matching
         RTVI frames and queues them downstream, where the ``RTVIObserver``
-        wraps them into typed ``ui-command`` / ``ui-task`` envelopes for the
+        wraps them into typed ``ui-command`` / ``ui-job-group`` envelopes for the
         client. Only the worker that owns the RTVI processor performs this
         translation; other workers skip it.
         """
@@ -775,39 +775,39 @@ class PipelineWorker(BaseWorker):
                 command=message.command_name,
                 payload=message.payload,
             )
-        elif isinstance(message, BusUITaskGroupStartedMessage):
-            frame = RTVIUITaskFrame(
-                data=UITaskGroupStartedData(
-                    task_id=message.task_id,
+        elif isinstance(message, BusUIJobGroupStartedMessage):
+            frame = RTVIUIJobGroupFrame(
+                data=UIJobGroupStartedData(
+                    job_id=message.job_id,
                     agents=list(message.agents or []),
                     label=message.label,
                     cancellable=message.cancellable,
                     at=message.at,
                 )
             )
-        elif isinstance(message, BusUITaskUpdateMessage):
-            frame = RTVIUITaskFrame(
-                data=UITaskUpdateData(
-                    task_id=message.task_id,
+        elif isinstance(message, BusUIJobUpdateMessage):
+            frame = RTVIUIJobGroupFrame(
+                data=UIJobUpdateData(
+                    job_id=message.job_id,
                     agent_name=message.agent_name,
                     data=message.data,
                     at=message.at,
                 )
             )
-        elif isinstance(message, BusUITaskCompletedMessage):
-            frame = RTVIUITaskFrame(
-                data=UITaskCompletedData(
-                    task_id=message.task_id,
+        elif isinstance(message, BusUIJobCompletedMessage):
+            frame = RTVIUIJobGroupFrame(
+                data=UIJobCompletedData(
+                    job_id=message.job_id,
                     agent_name=message.agent_name,
                     status=message.status,
                     response=message.response,
                     at=message.at,
                 )
             )
-        elif isinstance(message, BusUITaskGroupCompletedMessage):
-            frame = RTVIUITaskFrame(
-                data=UITaskGroupCompletedData(
-                    task_id=message.task_id,
+        elif isinstance(message, BusUIJobGroupCompletedMessage):
+            frame = RTVIUIJobGroupFrame(
+                data=UIJobGroupCompletedData(
+                    job_id=message.job_id,
                     at=message.at,
                 )
             )

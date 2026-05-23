@@ -7,7 +7,7 @@
  * - ``scroll_to`` and ``select_text`` for the agent to point back at
  *   paragraphs (pointing + deixis).
  * - ``set_input_value`` and ``click`` for dictating notes (form-fill).
- * - ``ui-task`` envelopes for the in-flight review card with
+ * - ``ui-job-group`` envelopes for the in-flight review card with
  *   per-worker progress and a Cancel button (async-tasks).
  * - One **custom command**, ``add_note``, registered locally.
  * - One **client-emitted event**, ``note_click``, sent when the user
@@ -38,7 +38,7 @@ const articleEl = document.querySelector("article");
 let client;
 let unsubscribes = [];
 
-// In-flight review groups, keyed by task_id. Rendered as cards above
+// In-flight review groups, keyed by job_id. Rendered as cards above
 // the notes list while running.
 const reviewGroups = new Map();
 
@@ -219,20 +219,20 @@ function handleAddNote(payload) {
 }
 
 // ─────────────────────────────────────────────
-// In-flight review card (ui-task envelopes)
+// In-flight review card (ui-job-group envelopes)
 // ─────────────────────────────────────────────
 
 function renderReviewCard(group) {
   const card = document.createElement("div");
   card.className = "review-card";
-  card.dataset.taskId = group.task_id;
+  card.dataset.jobId = group.job_id;
 
   const header = document.createElement("div");
   header.className = "review-card-header";
 
   const label = document.createElement("div");
   label.className = "review-card-label";
-  label.textContent = group.label ?? `Review ${group.task_id.slice(0, 6)}`;
+  label.textContent = group.label ?? `Review ${group.job_id.slice(0, 6)}`;
   header.appendChild(label);
 
   if (group.cancellable) {
@@ -243,7 +243,7 @@ function renderReviewCard(group) {
     cancel.addEventListener("click", () => {
       cancel.disabled = true;
       cancel.textContent = "Cancelling…";
-      client?.cancelUITask(group.task_id, "user requested");
+      client?.cancelUIJobGroup(group.job_id, "user requested");
     });
     group.cancelButton = cancel;
     header.appendChild(cancel);
@@ -296,17 +296,17 @@ function updateWorkerRow(group, agentName, { update, statusValue }) {
   }
 }
 
-function handleTaskEnvelope(env) {
+function handleJobGroupEnvelope(env) {
   switch (env.kind) {
     case "group_started": {
       const group = {
-        task_id: env.task_id,
+        job_id: env.job_id,
         label: env.label,
         cancellable: env.cancellable,
         agents: env.agents,
         ref: extractRefFromLabel(env.label),
       };
-      reviewGroups.set(env.task_id, group);
+      reviewGroups.set(env.job_id, group);
       // Place the in-flight card just below the new-note form so it
       // sits visibly above the existing notes.
       noteForm.insertAdjacentElement("afterend", renderReviewCard(group));
@@ -318,15 +318,15 @@ function handleTaskEnvelope(env) {
       refreshEmptyState();
       break;
     }
-    case "task_update": {
-      const group = reviewGroups.get(env.task_id);
+    case "job_update": {
+      const group = reviewGroups.get(env.job_id);
       if (!group) break;
       const text = env.data?.text ?? JSON.stringify(env.data);
       updateWorkerRow(group, env.agent_name, { update: text });
       break;
     }
-    case "task_completed": {
-      const group = reviewGroups.get(env.task_id);
+    case "job_completed": {
+      const group = reviewGroups.get(env.job_id);
       if (!group) break;
       updateWorkerRow(group, env.agent_name, {
         update: env.status === "completed" ? "✓ done" : env.status,
@@ -335,12 +335,12 @@ function handleTaskEnvelope(env) {
       break;
     }
     case "group_completed": {
-      const group = reviewGroups.get(env.task_id);
+      const group = reviewGroups.get(env.job_id);
       if (!group) break;
       // Drop the in-flight card; the notes that arrived via add_note
       // remain in the list.
       group.cardEl.remove();
-      reviewGroups.delete(env.task_id);
+      reviewGroups.delete(env.job_id);
       if (group.ref) {
         const para = findElementByRef(group.ref);
         if (para) para.classList.remove("under-review");
@@ -367,9 +367,9 @@ function onUICommand(command, handler) {
   return () => client.off(RTVIEvent.UICommand, listener);
 }
 
-function onUITask(handler) {
-  client.on(RTVIEvent.UITask, handler);
-  return () => client.off(RTVIEvent.UITask, handler);
+function onUIJobGroup(handler) {
+  client.on(RTVIEvent.UIJobGroup, handler);
+  return () => client.off(RTVIEvent.UIJobGroup, handler);
 }
 
 // ─────────────────────────────────────────────
@@ -425,7 +425,7 @@ async function connect() {
     onUICommand("set_input_value", handleSetInputValue),
     onUICommand("click", handleClick),
     onUICommand("add_note", handleAddNote),
-    onUITask(handleTaskEnvelope),
+    onUIJobGroup(handleJobGroupEnvelope),
   ];
 
   try {
