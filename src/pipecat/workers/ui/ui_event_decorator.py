@@ -7,7 +7,7 @@
 """Decorator for marking worker methods as UI event handlers."""
 
 
-def on_ui_event(name: str):
+def ui_event(name: str):
     """Mark a worker method as a handler for a named UI event.
 
     On ``UIWorker`` subclasses, decorated methods are automatically
@@ -17,7 +17,7 @@ def on_ui_event(name: str):
     Example::
 
         class MyUIWorker(UIWorker):
-            @on_ui_event("nav_click")
+            @ui_event("nav_click")
             async def on_nav(self, message):
                 view = message.payload.get("view")
                 ...
@@ -35,7 +35,7 @@ def on_ui_event(name: str):
 
 
 def _collect_ui_event_handlers(obj) -> dict:
-    """Collect all ``@on_ui_event`` decorated bound methods from an object.
+    """Collect all ``@ui_event`` decorated bound methods from an object.
 
     Walks the MRO so that overridden methods in subclasses take
     precedence over base-class definitions.
@@ -59,7 +59,7 @@ def _collect_ui_event_handlers(obj) -> dict:
                 event_name = val.ui_event_name
                 if event_name in handlers:
                     raise ValueError(
-                        f"Duplicate @on_ui_event handler for '{event_name}': "
+                        f"Duplicate @ui_event handler for '{event_name}': "
                         f"'{attr_name}' conflicts with '{source_names[event_name]}'"
                     )
                 handlers[event_name] = getattr(obj, attr_name)

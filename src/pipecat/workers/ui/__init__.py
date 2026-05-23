@@ -25,7 +25,7 @@ from pipecat.bus.ui.messages import (
     BusUIJobGroupStartedMessage,
     BusUIJobUpdateMessage,
 )
-from pipecat.workers.ui.ui_event_decorator import on_ui_event
+from pipecat.workers.ui.ui_event_decorator import ui_event
 from pipecat.workers.ui.ui_prompts import UI_STATE_PROMPT_GUIDE
 from pipecat.workers.ui.ui_tools import ReplyToolMixin
 from pipecat.workers.ui.ui_worker import UIWorker
@@ -45,5 +45,5 @@ __all__ = [
     "ReplyToolMixin",
     "UIWorker",
     "UI_STATE_PROMPT_GUIDE",
-    "on_ui_event",
+    "ui_event",
 ]

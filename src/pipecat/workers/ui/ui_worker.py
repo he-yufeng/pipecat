@@ -85,7 +85,7 @@ class UIWorker(LLMContextWorker):
     - See the screen. The client streams accessibility snapshots; the latest is
       rendered as ``<ui_state>`` and, by default, injected into the LLM context
       before every inference (``render_ui_state`` / ``visible_nodes``).
-    - React to UI events. Client events are dispatched to ``@on_ui_event(name)``
+    - React to UI events. Client events are dispatched to ``@ui_event(name)``
       handlers and, by default, appended to the context as ``<ui_event>``.
     - Drive the UI. ``send_command`` -- and the ``scroll_to`` / ``highlight`` /
       ``select_text`` / ``click`` / ``set_input_value`` helpers -- send commands
@@ -109,7 +109,7 @@ class UIWorker(LLMContextWorker):
     Example::
 
         class MyUIWorker(UIWorker):
-            @on_ui_event("nav_click")
+            @ui_event("nav_click")
             async def on_nav(self, message):
                 view = message.payload.get("view")
                 ...
@@ -874,7 +874,7 @@ class UIWorker(LLMContextWorker):
 
         Injection runs synchronously first so the ``<ui_event>``
         developer message lands in the context before any side effects
-        the handler triggers. The matching ``@on_ui_event`` handler
+        the handler triggers. The matching ``@ui_event`` handler
         then runs in its own asyncio task so the bus dispatcher isn't
         held open while the handler awaits downstream work (job
         requests, network calls). Events with no registered handler

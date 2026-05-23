@@ -22,7 +22,7 @@ plus one custom command and one client-emitted event.
   finds the paragraph and uses `select_text` to put the page selection
   on it.
 - **Client-emitted UI event**: clicking a note sends a `note_click` event
-  back; the worker's `@on_ui_event("note_click")` handler dispatches
+  back; the worker's `@ui_event("note_click")` handler dispatches
   `select_text` to jump to the paragraph. The round-trip event/command
   pattern.
 - **Two LLM tools coexisting**: `ReplyToolMixin`'s `reply` handles normal

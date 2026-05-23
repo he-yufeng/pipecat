@@ -22,7 +22,7 @@ from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.utils.asyncio.task_manager import TaskManager, TaskManagerParams
-from pipecat.workers.ui import UI_STATE_PROMPT_GUIDE, UIWorker, on_ui_event
+from pipecat.workers.ui import UI_STATE_PROMPT_GUIDE, UIWorker, ui_event
 
 
 class _StubUIWorker(UIWorker):
@@ -30,7 +30,7 @@ class _StubUIWorker(UIWorker):
         super().__init__(*args, **kwargs)
         self.captured: list[BusUIEventMessage] = []
 
-    @on_ui_event("nav_click")
+    @ui_event("nav_click")
     async def _on_nav(self, message: BusUIEventMessage) -> None:
         self.captured.append(message)
 
@@ -97,7 +97,7 @@ def _update_frames(worker) -> list[LLMMessagesUpdateFrame]:
 
 
 class TestUIWorkerDispatch(unittest.IsolatedAsyncioTestCase):
-    async def test_dispatches_to_matching_on_ui_event_handler(self):
+    async def test_dispatches_to_matching_ui_event_handler(self):
         worker = await _make_worker()
 
         await _dispatch(
@@ -156,7 +156,7 @@ class TestUIWorkerDispatch(unittest.IsolatedAsyncioTestCase):
         observed: list[bool] = []
 
         class _BlockingWorker(_StubUIWorker):
-            @on_ui_event("slow")
+            @ui_event("slow")
             async def _slow(self, message):
                 await gate.wait()
                 observed.append(True)
@@ -176,11 +176,11 @@ class TestUIWorkerDispatch(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
 
             class _Bad(UIWorker):
-                @on_ui_event("nav")
+                @ui_event("nav")
                 async def a(self, message):
                     pass
 
-                @on_ui_event("nav")
+                @ui_event("nav")
                 async def b(self, message):
                     pass
 

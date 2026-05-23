@@ -18,7 +18,7 @@ reviews a draft article. They can:
 - Ask "where does it talk about X" and the worker uses ``select_text`` to
   navigate.
 - Click an existing note; the client emits a ``note_click`` UI event, and
-  the worker's ``@on_ui_event("note_click")`` handler jumps to the related
+  the worker's ``@ui_event("note_click")`` handler jumps to the related
   paragraph — the round-trip event/command pattern.
 
 Architecture::
@@ -32,7 +32,7 @@ Architecture::
       ├── inherited reply (scroll_to, highlight, select_text, fills, click)
       ├── @tool start_review(answer, paragraph_ref, paragraph_text)
       │     └── start_user_job_group("clarity", "tone", ...)
-      ├── @on_ui_event("note_click") → select_text(ref)
+      ├── @ui_event("note_click") → select_text(ref)
       └── on_job_response → emit add_note for each reviewer that completes
 
     Two peer workers (BaseWorker each):
@@ -87,7 +87,7 @@ from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 from pipecat.workers.llm import tool
-from pipecat.workers.ui import ReplyToolMixin, UIWorker, on_ui_event
+from pipecat.workers.ui import ReplyToolMixin, UIWorker, ui_event
 
 load_dotenv(override=True)
 
@@ -319,7 +319,7 @@ class ReviewWorker(ReplyToolMixin, UIWorker):
 
     Composes ``ReplyToolMixin`` for the bundled reply tool and adds a
     ``start_review`` tool for kicking off paragraph review. A
-    ``@on_ui_event("note_click")`` handler converts client-side note
+    ``@ui_event("note_click")`` handler converts client-side note
     clicks into ``select_text`` navigation. ``on_job_response`` is
     overridden to translate each reviewer's response into an ``add_note``
     UI command so feedback shows up in the notes panel as it lands.
@@ -394,7 +394,7 @@ class ReviewWorker(ReplyToolMixin, UIWorker):
             },
         )
 
-    @on_ui_event("note_click")
+    @ui_event("note_click")
     async def on_note_click(self, message) -> None:
         """User clicked a note in the panel; jump to its paragraph."""
         ref = (message.payload or {}).get("ref")

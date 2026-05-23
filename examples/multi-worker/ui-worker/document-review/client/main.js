@@ -12,7 +12,7 @@
  * - One **custom command**, ``add_note``, registered locally.
  * - One **client-emitted event**, ``note_click``, sent when the user
  *   clicks a note in the panel. The worker's
- *   ``@on_ui_event("note_click")`` handler drives ``select_text`` to
+ *   ``@ui_event("note_click")`` handler drives ``select_text`` to
  *   navigate.
  */
 
@@ -199,7 +199,7 @@ function handleAddNote(payload) {
   li.appendChild(body);
 
   // Send a UI event when the user clicks the note. The server's
-  // @on_ui_event("note_click") handler turns it into a select_text
+  // @ui_event("note_click") handler turns it into a select_text
   // command back to us — full round-trip, worker-driven.
   if (ref) {
     li.addEventListener("click", () => {

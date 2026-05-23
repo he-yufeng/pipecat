@@ -36,7 +36,7 @@ from pipecat.bus.messages import BusDataMessage
 #: ``BusUIEventMessage``. ``UIWorker``'s bus dispatch matches on this
 #: name to route the snapshot into ``_latest_snapshot`` storage. The
 #: leading double underscore marks the name as internal so app-defined
-#: ``@on_ui_event`` handlers can't collide with it.
+#: ``@ui_event`` handlers can't collide with it.
 _UI_SNAPSHOT_BUS_EVENT_NAME = "__ui_snapshot"
 
 #: Internal ``event_name`` used by the UI bridge when republishing a
@@ -54,7 +54,7 @@ class BusUIEventMessage(BusDataMessage):
     Emitted by the native UI bridge in ``PipelineWorker`` when the
     client dispatches an event via
     ``PipecatClient.sendUIEvent(event, payload)``. ``UIWorker``
-    subclasses dispatch these to ``@on_ui_event(name)`` handlers.
+    subclasses dispatch these to ``@ui_event(name)`` handlers.
 
     Parameters:
         event_name: App-defined event name.
