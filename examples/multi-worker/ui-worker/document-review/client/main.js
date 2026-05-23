@@ -4,14 +4,14 @@
  * Combines the patterns from every prior demo into one workspace:
  *
  * - Snapshot streaming (every demo).
- * - ``scroll_to`` and ``select_text`` for the agent to point back at
+ * - ``scroll_to`` and ``select_text`` for the worker to point back at
  *   paragraphs (pointing + deixis).
  * - ``set_input_value`` and ``click`` for dictating notes (form-fill).
  * - ``ui-job-group`` envelopes for the in-flight review card with
  *   per-worker progress and a Cancel button (async-tasks).
  * - One **custom command**, ``add_note``, registered locally.
  * - One **client-emitted event**, ``note_click``, sent when the user
- *   clicks a note in the panel. The agent's
+ *   clicks a note in the panel. The worker's
  *   ``@on_ui_event("note_click")`` handler drives ``select_text`` to
  *   navigate.
  */
@@ -48,7 +48,7 @@ const notes = [];
 
 // The last article paragraph the user selected. Tracked separately
 // from window.getSelection() because the textarea steals selection
-// focus when the user (or the agent) types into it. Updated only
+// focus when the user (or the worker) types into it. Updated only
 // when the selection lands inside the article.
 let lastArticleRef = null;
 
@@ -154,7 +154,7 @@ function handleClick(payload) {
 // Server emits this when a worker produces feedback, when the user's
 // dictated note is committed, etc. Payload: {source, ref?, text}.
 // We render a clickable card that — when clicked — sends a note_click
-// UI event back to the server so the agent can respond by selecting
+// UI event back to the server so the worker can respond by selecting
 // the related paragraph.
 // ─────────────────────────────────────────────
 
@@ -200,7 +200,7 @@ function handleAddNote(payload) {
 
   // Send a UI event when the user clicks the note. The server's
   // @on_ui_event("note_click") handler turns it into a select_text
-  // command back to us — full round-trip, agent-driven.
+  // command back to us — full round-trip, worker-driven.
   if (ref) {
     li.addEventListener("click", () => {
       client?.sendUIEvent("note_click", { ref });
@@ -252,13 +252,13 @@ function renderReviewCard(group) {
 
   const ul = document.createElement("ul");
   ul.className = "review-workers";
-  for (const agent of group.agents) {
+  for (const worker of group.workers) {
     const li = document.createElement("li");
-    li.dataset.agent = agent;
+    li.dataset.worker = worker;
 
     const name = document.createElement("span");
     name.className = "review-worker-name";
-    name.textContent = agent;
+    name.textContent = worker;
     li.appendChild(name);
 
     const update = document.createElement("span");
@@ -281,9 +281,9 @@ function renderReviewCard(group) {
   return card;
 }
 
-function updateWorkerRow(group, agentName, { update, statusValue }) {
+function updateWorkerRow(group, workerName, { update, statusValue }) {
   const li = group.listEl.querySelector(
-    `li[data-agent="${CSS.escape(agentName)}"]`,
+    `li[data-worker="${CSS.escape(workerName)}"]`,
   );
   if (!li) return;
   if (update !== undefined) {
@@ -303,7 +303,7 @@ function handleJobGroupEnvelope(env) {
         job_id: env.job_id,
         label: env.label,
         cancellable: env.cancellable,
-        agents: env.agents,
+        workers: env.workers,
         ref: extractRefFromLabel(env.label),
       };
       reviewGroups.set(env.job_id, group);
@@ -322,13 +322,13 @@ function handleJobGroupEnvelope(env) {
       const group = reviewGroups.get(env.job_id);
       if (!group) break;
       const text = env.data?.text ?? JSON.stringify(env.data);
-      updateWorkerRow(group, env.agent_name, { update: text });
+      updateWorkerRow(group, env.worker_name, { update: text });
       break;
     }
     case "job_completed": {
       const group = reviewGroups.get(env.job_id);
       if (!group) break;
-      updateWorkerRow(group, env.agent_name, {
+      updateWorkerRow(group, env.worker_name, {
         update: env.status === "completed" ? "✓ done" : env.status,
         statusValue: env.status,
       });
@@ -376,7 +376,7 @@ function onUIJobGroup(handler) {
 // Form behavior
 // ─────────────────────────────────────────────
 
-// The user (or the agent via fills + click) submits a note. Pull the
+// The user (or the worker via fills + click) submits a note. Pull the
 // textarea content into a synthetic add_note so it shows up in the
 // list, then clear the textarea. The note attaches to whichever
 // article paragraph the user last selected (tracked via

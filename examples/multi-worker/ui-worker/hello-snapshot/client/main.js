@@ -1,5 +1,5 @@
 /**
- * Hello UIAgent — vanilla JS client.
+ * Hello UIWorker — vanilla JS client.
  *
  * Wires three pieces of the SDK end to end:
  *   1. PipecatClient + SmallWebRTCTransport for the voice session.
@@ -7,9 +7,9 @@
  *      every meaningful change (DOM mutations, focus, scroll-end,
  *      resize, visibility, selection).
  *
- * The agent has no tools — the snapshot is the entire input. The
- * server's ``UIAgent`` auto-injects the latest ``<ui_state>`` block
- * into the LLM context at the start of every turn, so the agent
+ * The worker has no tools — the snapshot is the entire input. The
+ * server's ``UIWorker`` auto-injects the latest ``<ui_state>`` block
+ * into the LLM context at the start of every turn, so the worker
  * always answers grounded in what's currently on screen.
  */
 

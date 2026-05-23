@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD 2-Clause License
 #
 
-"""Smoke tests for the UI Agent Protocol wire format.
+"""Smoke tests for the UI Worker Protocol wire format.
 
 The module under test is data only (constants, payload models, and
 envelope classes), so the goal is to pin the shapes: any accidental
@@ -171,7 +171,9 @@ class TestEnvelopeMessages(unittest.TestCase):
         self.assertEqual(tree["viewport"], {"width": 1024, "height": 768})
 
     def test_ui_cancel_task_envelope(self):
-        msg = UICancelJobGroupMessage(id="m3", data=UICancelJobGroupData(job_id="t-99", reason="user"))
+        msg = UICancelJobGroupMessage(
+            id="m3", data=UICancelJobGroupData(job_id="t-99", reason="user")
+        )
         self.assertEqual(
             msg.model_dump(),
             {
@@ -184,7 +186,7 @@ class TestEnvelopeMessages(unittest.TestCase):
 
     def test_ui_job_group_started(self):
         msg = UIJobGroupMessage(
-            data=UIJobGroupStartedData(job_id="t-1", agents=["a", "b"], label="Search", at=42)
+            data=UIJobGroupStartedData(job_id="t-1", workers=["a", "b"], label="Search", at=42)
         )
         self.assertEqual(msg.type, "ui-job-group")
         self.assertEqual(msg.data.kind, "group_started")
@@ -192,15 +194,15 @@ class TestEnvelopeMessages(unittest.TestCase):
 
     def test_ui_job_update(self):
         msg = UIJobGroupMessage(
-            data=UIJobUpdateData(job_id="t-1", agent_name="a", data={"progress": 0.5}, at=43)
+            data=UIJobUpdateData(job_id="t-1", worker_name="a", data={"progress": 0.5}, at=43)
         )
         self.assertEqual(msg.data.kind, "job_update")
-        self.assertEqual(msg.data.agent_name, "a")
+        self.assertEqual(msg.data.worker_name, "a")
 
     def test_ui_job_completed(self):
         msg = UIJobGroupMessage(
             data=UIJobCompletedData(
-                job_id="t-1", agent_name="a", status="completed", response={"ok": True}, at=44
+                job_id="t-1", worker_name="a", status="completed", response={"ok": True}, at=44
             )
         )
         self.assertEqual(msg.data.kind, "job_completed")

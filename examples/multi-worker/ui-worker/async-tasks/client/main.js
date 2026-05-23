@@ -7,7 +7,7 @@
  * envelopes.
  *
  * The server's ``user_task_group`` fans work out to multiple
- * worker agents and forwards their progress automatically as
+ * worker workers and forwards their progress automatically as
  * ``ui-job-group`` envelopes. Four kinds:
  *
  * - ``group_started``: workers and label are now known.
@@ -19,7 +19,7 @@
  * each group as a card with its workers' statuses, and surfaces a
  * cancel button per cancellable group. ``client.cancelUIJobGroup(job_id,
  * reason)`` sends a ``__cancel_job_group`` event back to the server,
- * which calls ``UIAgent.cancel_task(...)`` on the registered group.
+ * which calls ``UIWorker.cancel_job_group(...)`` on the registered group.
  */
 
 import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
@@ -38,7 +38,7 @@ const resultsEmpty = document.getElementById("results-empty");
 let client;
 let unsubscribeJobGroups;
 
-// Map<job_id, { label, cancellable, agents, workers: Map<agent_name, {status, lastUpdate, response}>, cardEl }>
+// Map<job_id, { label, cancellable, workers, workers: Map<worker_name, {status, lastUpdate, response}>, cardEl }>
 const groups = new Map();
 
 function setStatus(text, autoHideMs = 0) {
@@ -85,13 +85,13 @@ function renderGroupCard(group) {
 
   const ul = document.createElement("ul");
   ul.className = "workers";
-  for (const agent of group.agents) {
+  for (const worker of group.workers) {
     const li = document.createElement("li");
-    li.dataset.agent = agent;
+    li.dataset.worker = worker;
 
     const name = document.createElement("span");
     name.className = "worker-name";
-    name.textContent = agent;
+    name.textContent = worker;
     li.appendChild(name);
 
     const update = document.createElement("span");
@@ -114,8 +114,8 @@ function renderGroupCard(group) {
   return card;
 }
 
-function updateWorkerRow(group, agentName, { update, statusValue, response }) {
-  const li = group.listEl.querySelector(`li[data-agent="${CSS.escape(agentName)}"]`);
+function updateWorkerRow(group, workerName, { update, statusValue, response }) {
+  const li = group.listEl.querySelector(`li[data-worker="${CSS.escape(workerName)}"]`);
   if (!li) return;
   if (update !== undefined) {
     li.querySelector(".worker-update").textContent = update;
@@ -155,13 +155,13 @@ function renderResultsForGroup(group) {
   meta.textContent = parts.join(" · ") || "no workers";
   card.appendChild(meta);
 
-  group.workers.forEach((w, agent) => {
+  group.workers.forEach((w, worker) => {
     if (w.status !== "completed") return;
     const section = document.createElement("div");
     section.className = "result-card-section";
     const src = document.createElement("span");
     src.className = "source";
-    src.textContent = agent + ": ";
+    src.textContent = worker + ": ";
     section.appendChild(src);
     const summary =
       w.response?.summary ?? w.response?.text ?? JSON.stringify(w.response);
@@ -176,14 +176,14 @@ function handleJobGroupEnvelope(env) {
   switch (env.kind) {
     case "group_started": {
       const workers = new Map();
-      for (const a of env.agents) {
+      for (const a of env.workers) {
         workers.set(a, { status: "running", update: null, response: null });
       }
       const group = {
         job_id: env.job_id,
         label: env.label,
         cancellable: env.cancellable,
-        agents: env.agents,
+        workers: env.workers,
         workers,
       };
       groups.set(env.job_id, group);
@@ -195,15 +195,15 @@ function handleJobGroupEnvelope(env) {
       const group = groups.get(env.job_id);
       if (!group) break;
       const text = env.data?.text ?? JSON.stringify(env.data);
-      const w = group.workers.get(env.agent_name);
+      const w = group.workers.get(env.worker_name);
       if (w) w.update = text;
-      updateWorkerRow(group, env.agent_name, { update: text });
+      updateWorkerRow(group, env.worker_name, { update: text });
       break;
     }
     case "job_completed": {
       const group = groups.get(env.job_id);
       if (!group) break;
-      const w = group.workers.get(env.agent_name);
+      const w = group.workers.get(env.worker_name);
       if (w) {
         w.status = env.status;
         w.response = env.response;
@@ -211,7 +211,7 @@ function handleJobGroupEnvelope(env) {
       const display = env.response?.summary
         ? env.response.summary.slice(0, 60) + "…"
         : env.status;
-      updateWorkerRow(group, env.agent_name, {
+      updateWorkerRow(group, env.worker_name, {
         update: display,
         statusValue: env.status,
         response: env.response,

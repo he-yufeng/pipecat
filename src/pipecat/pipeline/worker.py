@@ -779,7 +779,7 @@ class PipelineWorker(BaseWorker):
             frame = RTVIUIJobGroupFrame(
                 data=UIJobGroupStartedData(
                     job_id=message.job_id,
-                    agents=list(message.agents or []),
+                    workers=list(message.workers or []),
                     label=message.label,
                     cancellable=message.cancellable,
                     at=message.at,
@@ -789,7 +789,7 @@ class PipelineWorker(BaseWorker):
             frame = RTVIUIJobGroupFrame(
                 data=UIJobUpdateData(
                     job_id=message.job_id,
-                    agent_name=message.agent_name,
+                    worker_name=message.worker_name,
                     data=message.data,
                     at=message.at,
                 )
@@ -798,7 +798,7 @@ class PipelineWorker(BaseWorker):
             frame = RTVIUIJobGroupFrame(
                 data=UIJobCompletedData(
                     job_id=message.job_id,
-                    agent_name=message.agent_name,
+                    worker_name=message.worker_name,
                     status=message.status,
                     response=message.response,
                     at=message.at,

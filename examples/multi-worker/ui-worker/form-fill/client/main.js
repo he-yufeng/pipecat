@@ -12,7 +12,7 @@
  * is the catch-all for checkboxes, radios, and submit buttons.
  *
  * The submit button intercepts the form's submit event so the demo
- * stays on-page after the agent submits. Real apps would let it
+ * stays on-page after the worker submits. Real apps would let it
  * through.
  */
 
@@ -69,10 +69,10 @@ function handleScrollTo(payload) {
  * Write ``payload.value`` into the targeted input/textarea.
  *
  * Skips ``disabled`` / ``readonly`` / ``type="hidden"`` targets so
- * the agent can't bypass UI affordances. Dispatches ``input`` and
+ * the worker can't bypass UI affordances. Dispatches ``input`` and
  * ``change`` events so framework-controlled inputs (React, Vue, etc.)
  * notice the change. Briefly flashes the field so the user sees
- * what the agent wrote.
+ * what the worker wrote.
  */
 function handleSetInputValue(payload) {
   const el = resolveTarget(payload);
@@ -99,7 +99,7 @@ function handleSetInputValue(payload) {
 
 /**
  * Click the targeted element. Skips ``disabled`` targets so the
- * agent can't bypass disabled affordances; the standard React
+ * worker can't bypass disabled affordances; the standard React
  * handler does the same.
  */
 function handleClick(payload) {
@@ -109,7 +109,7 @@ function handleClick(payload) {
   el.click();
 }
 
-// Don't actually submit the form on the demo; the agent says "I
+// Don't actually submit the form on the demo; the worker says "I
 // submitted it" and we show a status message instead.
 form.addEventListener("submit", (e) => {
   e.preventDefault();

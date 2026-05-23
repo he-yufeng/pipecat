@@ -124,7 +124,7 @@ Every turn calls ``reply`` exactly once. One tool call per turn.
 - ``answer`` (REQUIRED): the spoken reply, plain language, one \
 short sentence. No markdown, no symbols.
 - ``research_query`` (OPTIONAL): the topic to research. When set, \
-the server fans out three worker agents in parallel and streams \
+the server fans out three workers in parallel and streams \
 their progress to an in-flight panel on the page. The workers run \
 in the background; you do NOT wait for results. Just speak a brief \
 acknowledgement.
@@ -257,7 +257,7 @@ class ResearchWorker(UIWorker):
                 sentence. For research turns, a brief acknowledgement
                 like "Researching X now."
             research_query: Optional topic to research. When set, the
-                server fans out three worker agents in parallel and
+                server fans out three workers in parallel and
                 streams progress to the page. Workers run in the
                 background; the LLM does NOT wait for results.
         """

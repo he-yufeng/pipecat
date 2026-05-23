@@ -6,7 +6,7 @@
  * handlers: ``scroll_to``, ``highlight``, and ``select_text``.
  *
  * The interesting one is ``select_text``: it puts the OS-level text
- * selection on the referenced element, so when the agent says
+ * selection on the referenced element, so when the worker says
  * "this paragraph here" the user sees exactly which paragraph it
  * means. The READ direction (user selection) flows the other way —
  * Managed snapshot streaming automatically captures
@@ -65,7 +65,7 @@ function handleHighlight(payload) {
   // Pointing's pulse style isn't appropriate for an article
   // (paragraphs don't want to scale). Use a brief background flash
   // by briefly setting a class. Highlight is used here mostly for
-  // emphasizing single phrases the agent named — see CSS.
+  // emphasizing single phrases the worker named — see CSS.
   const el = resolveTarget(payload);
   if (!el) return;
   el.classList.remove("flash");
@@ -80,7 +80,7 @@ function handleHighlight(payload) {
  *
  * Build a ``Range`` covering the element's children, replace the
  * window selection with it, and scroll the element into view. This
- * is the WRITE side of the deixis story: the agent says "this
+ * is the WRITE side of the deixis story: the worker says "this
  * paragraph" and the page shows the text actually selected.
  */
 function handleSelectText(payload) {
@@ -96,7 +96,7 @@ function handleSelectText(payload) {
   sel.addRange(range);
 
   // Scroll the selection into view if it isn't already, so the user
-  // actually sees the agent's pointer.
+  // actually sees the worker's pointer.
   el.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 

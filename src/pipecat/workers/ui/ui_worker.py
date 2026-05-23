@@ -727,7 +727,7 @@ class UIWorker(LLMContextWorker):
                 source=self.name,
                 target=None,
                 job_id=message.job_id,
-                agent_name=message.source,
+                worker_name=message.source,
                 data=message.update,
                 at=int(time.time() * 1000),
             )
@@ -747,7 +747,7 @@ class UIWorker(LLMContextWorker):
                 source=self.name,
                 target=None,
                 job_id=message.job_id,
-                agent_name=message.source,
+                worker_name=message.source,
                 status=str(message.status),
                 response=message.response,
                 at=int(time.time() * 1000),

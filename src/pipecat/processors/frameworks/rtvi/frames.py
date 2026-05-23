@@ -90,8 +90,7 @@ class RTVIUIEventFrame(SystemFrame):
     frame-and-event pattern used by ``client-message``: pipeline
     observers and processors that want to react to UI events at the
     pipeline level can match on this frame; code that subscribes to
-    events instead (like the bridge in ``pipecat-ai-subagents``)
-    keeps using the event handler.
+    events instead (like ``UIWorker``) keeps using the event handler.
 
     Parameters:
         msg_id: The RTVI message id, as set by the client.

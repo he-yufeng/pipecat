@@ -98,7 +98,7 @@ class TestUIWorkerForwarding(unittest.IsolatedAsyncioTestCase):
         ]
         self.assertEqual(len(forwarded), 1)
         self.assertEqual(forwarded[0].job_id, "t1")
-        self.assertEqual(forwarded[0].agent_name, "worker")
+        self.assertEqual(forwarded[0].worker_name, "worker")
         self.assertEqual(forwarded[0].data, {"kind": "tool_call", "tool": "WebSearch"})
 
     async def test_registered_job_response_is_forwarded(self):
@@ -125,7 +125,7 @@ class TestUIWorkerForwarding(unittest.IsolatedAsyncioTestCase):
         ]
         self.assertEqual(len(forwarded), 1)
         self.assertEqual(forwarded[0].job_id, "t1")
-        self.assertEqual(forwarded[0].agent_name, "worker")
+        self.assertEqual(forwarded[0].worker_name, "worker")
         self.assertEqual(forwarded[0].status, "completed")
         self.assertEqual(forwarded[0].response, {"answer": 42})
 
@@ -307,7 +307,7 @@ class TestUserJobGroupContext(unittest.IsolatedAsyncioTestCase):
         started = worker.send_bus_message.await_args_list[0].args[0]
         self.assertIsInstance(started, BusUIJobGroupStartedMessage)
         self.assertEqual(started.job_id, "t1")
-        self.assertEqual(started.agents, ["w1"])
+        self.assertEqual(started.workers, ["w1"])
         self.assertEqual(started.label, "My research")
         self.assertTrue(started.cancellable)
 

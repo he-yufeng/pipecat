@@ -99,14 +99,14 @@ class BusUIJobGroupStartedMessage(BusDataMessage):
 
     Parameters:
         job_id: Shared job-group identifier for the group.
-        agents: Names of the workers the work was dispatched to.
+        workers: Names of the workers the work was dispatched to.
         label: Optional human-readable label for the group.
         cancellable: Whether the client may request cancellation.
         at: Epoch milliseconds when the group started.
     """
 
     job_id: str = ""
-    agents: list[str] | None = None
+    workers: list[str] | None = None
     label: str | None = None
     cancellable: bool = True
     at: int = 0
@@ -123,13 +123,13 @@ class BusUIJobUpdateMessage(BusDataMessage):
 
     Parameters:
         job_id: The shared job-group identifier.
-        agent_name: The worker that produced the update.
+        worker_name: The worker that produced the update.
         data: The worker's update payload, forwarded verbatim.
         at: Epoch milliseconds when the update was emitted on the bus.
     """
 
     job_id: str = ""
-    agent_name: str = ""
+    worker_name: str = ""
     data: Any = None
     at: int = 0
 
@@ -145,14 +145,14 @@ class BusUIJobCompletedMessage(BusDataMessage):
 
     Parameters:
         job_id: The shared job-group identifier.
-        agent_name: The worker that produced the response.
+        worker_name: The worker that produced the response.
         status: Completion status as a string (``JobStatus`` value).
         response: The worker's response payload.
         at: Epoch milliseconds when the response was received.
     """
 
     job_id: str = ""
-    agent_name: str = ""
+    worker_name: str = ""
     status: str = ""
     response: Any = None
     at: int = 0

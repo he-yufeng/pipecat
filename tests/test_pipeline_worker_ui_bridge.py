@@ -105,7 +105,9 @@ class TestUIBridgeInbound(unittest.IsolatedAsyncioTestCase):
 
         await _fire_ui_message(
             worker,
-            UICancelJobGroupMessage(id="m3", data=UICancelJobGroupData(job_id="t-1", reason="user")),
+            UICancelJobGroupMessage(
+                id="m3", data=UICancelJobGroupData(job_id="t-1", reason="user")
+            ),
         )
 
         events = [m for m in sent if isinstance(m, BusUIEventMessage)]
@@ -150,7 +152,7 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
                 source="ui",
                 target=None,
                 job_id="t1",
-                agents=["w1", "w2"],
+                workers=["w1", "w2"],
                 label="Doing stuff",
                 cancellable=True,
                 at=1700,
@@ -160,7 +162,7 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
         frame = next(f for f in frames if isinstance(f, RTVIUIJobGroupFrame))
         self.assertEqual(frame.data.kind, "group_started")
         self.assertEqual(frame.data.job_id, "t1")
-        self.assertEqual(frame.data.agents, ["w1", "w2"])
+        self.assertEqual(frame.data.workers, ["w1", "w2"])
         self.assertEqual(frame.data.label, "Doing stuff")
         self.assertTrue(frame.data.cancellable)
         self.assertEqual(frame.data.at, 1700)
@@ -173,7 +175,7 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
                 source="ui",
                 target=None,
                 job_id="t1",
-                agent_name="w1",
+                worker_name="w1",
                 data={"kind": "tool_call", "tool": "WebSearch"},
                 at=1701,
             )
@@ -182,7 +184,7 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
         frame = next(f for f in frames if isinstance(f, RTVIUIJobGroupFrame))
         self.assertEqual(frame.data.kind, "job_update")
         self.assertEqual(frame.data.job_id, "t1")
-        self.assertEqual(frame.data.agent_name, "w1")
+        self.assertEqual(frame.data.worker_name, "w1")
         self.assertEqual(frame.data.data, {"kind": "tool_call", "tool": "WebSearch"})
         self.assertEqual(frame.data.at, 1701)
 
@@ -194,7 +196,7 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
                 source="ui",
                 target=None,
                 job_id="t1",
-                agent_name="w1",
+                worker_name="w1",
                 status="completed",
                 response={"answer": 42},
                 at=1702,
@@ -204,7 +206,7 @@ class TestUIBridgeOutbound(unittest.IsolatedAsyncioTestCase):
         frame = next(f for f in frames if isinstance(f, RTVIUIJobGroupFrame))
         self.assertEqual(frame.data.kind, "job_completed")
         self.assertEqual(frame.data.job_id, "t1")
-        self.assertEqual(frame.data.agent_name, "w1")
+        self.assertEqual(frame.data.worker_name, "w1")
         self.assertEqual(frame.data.status, "completed")
         self.assertEqual(frame.data.response, {"answer": 42})
         self.assertEqual(frame.data.at, 1702)

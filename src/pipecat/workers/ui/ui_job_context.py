@@ -122,7 +122,7 @@ class UserJobGroupContext(JobGroupContext):
                 source=self._ui_worker.name,
                 target=None,
                 job_id=job_id,
-                agents=list(self._worker_names),
+                workers=list(self._worker_names),
                 label=self._label,
                 cancellable=self._cancellable,
                 at=int(time.time() * 1000),

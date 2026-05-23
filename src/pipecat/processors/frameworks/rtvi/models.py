@@ -551,9 +551,9 @@ class SystemLogMessage(BaseModel):
     data: TextMessageData
 
 
-# -- UI Agent Protocol -------------------------------------------------------
+# -- UI Worker Protocol ------------------------------------------------------
 #
-# A structured RTVI message vocabulary that lets server-side AI agents
+# A structured RTVI message vocabulary that lets server-side workers
 # observe and drive a GUI app on the client side. The protocol covers
 # five first-class RTVI message types:
 #
@@ -564,12 +564,11 @@ class SystemLogMessage(BaseModel):
 #   ui-job-group          server-to-client job-group lifecycle envelope
 #
 # This section is data only (constants and payload models, no
-# behavior). Higher-level frameworks like ``pipecat-ai-subagents``
-# build the agent abstractions on top, and single-LLM Pipecat apps can
-# target the same wire format directly via custom tools that emit
-# typed RTVI messages with these types. The matching client-side
-# implementation lives in ``@pipecat-ai/client-js`` and
-# ``@pipecat-ai/client-react``.
+# behavior). ``pipecat.workers.ui.UIWorker`` builds the higher-level
+# abstractions on top, and single-LLM Pipecat apps can target the same
+# wire format directly via custom tools that emit typed RTVI messages
+# with these types. The matching client-side implementation lives in
+# ``@pipecat-ai/client-js`` and ``@pipecat-ai/client-react``.
 
 # The wire-format ``type`` strings (``"ui-event"``, ``"ui-command"``,
 # ``"ui-snapshot"``, ``"ui-cancel-job-group"``, ``"ui-job-group"``) are pinned
@@ -722,7 +721,7 @@ class UIJobGroupStartedData(BaseModel):
     Parameters:
         kind: Always ``"group_started"``.
         job_id: Shared job-group identifier for the group.
-        agents: Names of the agents the work was dispatched to.
+        workers: Names of the workers the work was dispatched to.
         label: Optional human-readable label for the group.
         cancellable: Whether the client may request cancellation.
         at: Epoch milliseconds when the group started.
@@ -730,7 +729,7 @@ class UIJobGroupStartedData(BaseModel):
 
     kind: Literal["group_started"] = "group_started"
     job_id: str
-    agents: list[str] | None = None
+    workers: list[str] | None = None
     label: str | None = None
     cancellable: bool = True
     at: int = 0
@@ -742,14 +741,14 @@ class UIJobUpdateData(BaseModel):
     Parameters:
         kind: Always ``"job_update"``.
         job_id: The shared job-group identifier.
-        agent_name: The worker that produced the update.
+        worker_name: The worker that produced the update.
         data: The worker's update payload, forwarded verbatim.
         at: Epoch milliseconds when the update was emitted.
     """
 
     kind: Literal["job_update"] = "job_update"
     job_id: str
-    agent_name: str
+    worker_name: str
     data: Any | None = None
     at: int = 0
 
@@ -760,7 +759,7 @@ class UIJobCompletedData(BaseModel):
     Parameters:
         kind: Always ``"job_completed"``.
         job_id: The shared job-group identifier.
-        agent_name: The worker that produced the response.
+        worker_name: The worker that produced the response.
         status: Completion status string.
         response: The worker's response payload.
         at: Epoch milliseconds when the response was received.
@@ -768,7 +767,7 @@ class UIJobCompletedData(BaseModel):
 
     kind: Literal["job_completed"] = "job_completed"
     job_id: str
-    agent_name: str
+    worker_name: str
     status: str
     response: Any | None = None
     at: int = 0
@@ -943,7 +942,7 @@ class Click(BaseModel):
     Closes the form-fill loop for non-text inputs (checkboxes, radios)
     and exposes the rest of the action vocabulary (submit buttons,
     links, app-specific clickable nodes). The standard handler
-    silently no-ops on ``disabled`` targets so the agent can't bypass
+    silently no-ops on ``disabled`` targets so the worker can't bypass
     UI affordances the user is meant to control.
 
     For native ``<select>``, prefer ``SetInputValue`` (clicking
@@ -964,14 +963,14 @@ class Click(BaseModel):
 class SetInputValue(BaseModel):
     """Write a value into a text input or textarea on the client.
 
-    Use this for form-filling: the agent has decided what should go
+    Use this for form-filling: the worker has decided what should go
     into a field (clarifying answer, tax form entry, etc.) and asks
     the client to populate it. With ``replace=True`` (the default),
     the existing value is overwritten; with ``replace=False`` the
     value is appended.
 
     The standard handler silently no-ops on ``disabled``, ``readonly``,
-    and ``<input type="hidden">`` targets so the agent can't write
+    and ``<input type="hidden">`` targets so the worker can't write
     into fields the user can't.
 
     Parameters:
@@ -991,11 +990,11 @@ class SetInputValue(BaseModel):
 
 
 class SelectText(BaseModel):
-    """Select text on the page so the user can see what the agent means.
+    """Select text on the page so the user can see what the worker means.
 
     Mirror of the ``selection`` field surfaced in the snapshot. Use
     this to point the user's attention at a specific paragraph or
-    range after the agent has decided what it's referring to.
+    range after the worker has decided what it's referring to.
 
     With ``start_offset`` and ``end_offset`` omitted, the entire
     target's text content is selected (``Range.selectNodeContents``
